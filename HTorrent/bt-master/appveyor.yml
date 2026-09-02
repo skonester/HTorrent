@@ -1,0 +1,18 @@
+version: '1.4.{build}'
+branches:
+  only:
+  - master
+clone_depth: 10
+build:
+  verbosity: minimal
+os: Windows Server 2012
+install:
+  - cinst: maven
+  - ps: .\script\appveyor-install-jce.ps1
+  - cmd: refreshenv
+environment:
+  MAVEN_OPTS: '-Xmx256m'
+build_script:
+  - mvn clean install -DskipTests
+test_script:
+  - mvn clean install -Pcodecov 2>&1

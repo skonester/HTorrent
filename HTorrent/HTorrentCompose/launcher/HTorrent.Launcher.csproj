@@ -1,0 +1,35 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>HTorrent.Launcher</RootNamespace>
+    <AssemblyName>HTorrent</AssemblyName>
+    <ApplicationIcon>..\icon\favicon.ico</ApplicationIcon>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- Single-file publish settings -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>full</TrimMode>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+
+    <!-- Assembly / EXE metadata — this is what Windows shows in Properties -->
+    <Product>HTorrent</Product>
+    <Company>Skonester</Company>
+    <Authors>Skonester</Authors>
+    <Version>1.0.0</Version>
+    <FileVersion>1.0.0.0</FileVersion>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <Copyright>Copyright © 2026 Skonester</Copyright>
+    <Description>HTorrent - Torrent Client by Skonester</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="..\icon\favicon.ico" />
+  </ItemGroup>
+
+</Project>
