@@ -9,8 +9,6 @@ version = "1.0.0"
 dependencies {
     implementation(compose.desktop.currentOs)
     implementation(compose.material)
-    implementation("com.github.atomashpolskiy:bt-core:1.11-SNAPSHOT")
-    implementation("com.github.atomashpolskiy:bt-dht:1.11-SNAPSHOT")
 
     testImplementation(kotlin("test"))
 }
@@ -19,6 +17,7 @@ compose.desktop {
     application {
         mainClass = "MainKt"
         nativeDistributions {
+            modules("jdk.httpserver", "java.xml", "jdk.crypto.ec")
             // No targetFormats — we use createDistributable, not an installer
             packageName = "HTorrent"
             packageVersion = "1.0.0"
@@ -57,7 +56,9 @@ val packageApp by tasks.registering(Copy::class) {
     group = "distribution"
     dependsOn("createDistributable", buildLauncher)
 
-    val distDir = project.layout.buildDirectory.dir("dist/HTorrent")
+    val distName = providers.gradleProperty("distName").getOrElse("HTorrent")
+    require(distName.matches(Regex("[A-Za-z0-9_-]+")))
+    val distDir = project.layout.buildDirectory.dir("dist/$distName")
 
     // Copy the createDistributable output into runtime/
     from(project.layout.buildDirectory.dir("compose/binaries/main/app/HTorrent")) {
@@ -69,6 +70,9 @@ val packageApp by tasks.registering(Copy::class) {
         include("HTorrent.exe")
     }
 
+    from("RQBIT-NOTICE.md")
+    from("licenses") { into("licenses") }
+
     into(distDir)
 
     doLast {
@@ -77,3 +81,5 @@ val packageApp by tasks.registering(Copy::class) {
         println("Run:    ${distDir.get().asFile.absolutePath}\\HTorrent.exe")
     }
 }
+
+kotlin { jvmToolchain(17) }

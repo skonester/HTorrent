@@ -1,6 +1,12 @@
-*.iml
-.gradle
-.idea
+.gradle/
+.idea/
 build/
 out/
+launcher/bin/
+launcher/obj/
+*.iml
+*.user
+*.suo
+*.log
+.env
 local.properties

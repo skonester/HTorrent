@@ -1,6 +1,9 @@
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,11 +20,7 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -33,20 +32,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
-import bt.Bt
-import bt.data.file.FileSystemStorage
-import bt.dht.DHTConfig
-import bt.dht.DHTModule
-import bt.runtime.BtClient
-import bt.runtime.Config
-import bt.torrent.TorrentSessionState
 import java.io.File
-import java.net.ServerSocket
-import java.nio.file.Files
-import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.Locale
-import kotlin.math.max
 
 private val BackgroundGray = Color(0xFFF1F1F1)
 private val PanelGray = Color(0xFFE6E6E6)
@@ -58,191 +46,12 @@ private val ActiveBlue = Color(0xFF0000B0)
 private val StoppedGray = Color(0xFF808080)
 private val ErrorRed = Color(0xFFB22222)
 
-private data class TorrentRow(
-    val id: String,
-    var name: String,
-    var progress: Double = 0.0,
-    var downSpeed: Long = 0,
-    var upSpeed: Long = 0,
-    var status: String = "Queued",
-    var peers: Int = 0,
-    var filePath: String? = null,
-    var magnetLink: String? = null,
-    var lastDownloadedBytes: Long = 0,
-    var lastUploadedBytes: Long = 0,
-    var client: BtClient? = null
-)
-
-private class TorrentEngine(initialDownloadPath: Path) {
-    private val itemsState = mutableStateListOf<TorrentRow>()
-    val items: List<TorrentRow> get() = itemsState
-
-    var downloadPath by mutableStateOf(initialDownloadPath.toString())
-        private set
-
-    init {
-        Files.createDirectories(initialDownloadPath)
-    }
-
-    fun setDownloadPath(path: Path) {
-        Files.createDirectories(path)
-        downloadPath = path.toString()
-    }
-
-    fun addTorrentFile(file: File) {
-        val row = TorrentRow(
-            id = "torrent-${System.nanoTime()}",
-            name = file.nameWithoutExtension,
-            filePath = file.absolutePath
-        )
-        itemsState.add(row)
-
-        try {
-            val client = buildTorrentClient(file)
-            row.client = client
-            startClient(row.id)
-        } catch (t: Throwable) {
-            t.printStackTrace()
-            row.status = "Error: ${t.message ?: t.javaClass.simpleName}"
-            row.progress = 0.0
-            row.downSpeed = 0
-            row.upSpeed = 0
-            row.peers = 0
-        }
-    }
-
-    fun addMagnet(link: String) {
-        val row = TorrentRow(
-            id = "torrent-${System.nanoTime()}",
-            name = inferMagnetName(link),
-            magnetLink = link
-        )
-        itemsState.add(row)
-
-        try {
-            val client = buildMagnetClient(link)
-            row.client = client
-            startClient(row.id)
-        } catch (t: Throwable) {
-            t.printStackTrace()
-            row.status = "Error: ${t.message ?: t.javaClass.simpleName}"
-            row.progress = 0.0
-            row.downSpeed = 0
-            row.upSpeed = 0
-            row.peers = 0
-        }
-    }
-
-    fun startAll() {
-        itemsState.forEach { row ->
-            if (row.status.lowercase(Locale.getDefault()) in listOf("paused", "stopped", "queued", "error")) {
-                startClient(row.id)
-            }
-        }
-    }
-
-    fun pauseAll() {
-        itemsState.forEach { row ->
-            row.client?.stop()
-            row.status = "Paused"
-            row.downSpeed = 0
-            row.upSpeed = 0
-        }
-    }
-
-    fun stopAll() {
-        itemsState.forEach { row ->
-            row.client?.stop()
-            row.status = "Stopped"
-            row.downSpeed = 0
-            row.upSpeed = 0
-            row.peers = 0
-        }
-    }
-
-    fun removeAll() {
-        itemsState.forEach { it.client?.stop() }
-        itemsState.clear()
-    }
-
-    private fun startClient(id: String) {
-        val row = itemsState.firstOrNull { it.id == id } ?: return
-        val client = row.client ?: return
-        if (client.isStarted) {
-            row.status = "Downloading"
-            return
-        }
-
-        row.status = "Starting"
-        client.startAsync({ state -> applySessionState(id, state) }, 1000L)
-    }
-
-    private fun applySessionState(id: String, state: TorrentSessionState) {
-        val row = itemsState.firstOrNull { it.id == id } ?: return
-        val total = state.piecesTotal
-        row.progress = if (total > 0) (state.piecesComplete.toDouble() / total.toDouble()) * 100.0 else 0.0
-        row.peers = state.connectedPeers.size
-
-        val downloaded = state.downloaded
-        val uploaded = state.uploaded
-        row.downSpeed = max(0L, downloaded - row.lastDownloadedBytes)
-        row.upSpeed = max(0L, uploaded - row.lastUploadedBytes)
-        row.lastDownloadedBytes = downloaded
-        row.lastUploadedBytes = uploaded
-
-        row.status = when {
-            total > 0 && state.piecesComplete >= total -> "Seeding"
-            row.peers == 0 && row.progress > 0.0 -> "Queued"
-            else -> "Downloading"
-        }
-    }
-
-    private fun defaultConfig(): Config = object : Config() {
-        override fun getNumOfHashingThreads(): Int = Runtime.getRuntime().availableProcessors() * 2
-        override fun getAcceptorPort(): Int = findAvailablePort()
-    }
-
-    internal fun buildDhtConfig(): DHTConfig = object : DHTConfig() {
-        override fun getListeningPort(): Int = findAvailablePort()
-        override fun shouldUseRouterBootstrap(): Boolean = true
-    }
-
-    private fun buildTorrentClient(file: File): BtClient {
-        val config = defaultConfig()
-        val dhtModule = DHTModule(buildDhtConfig())
-
-        return Bt.client()
-            .config(config)
-            .storage(FileSystemStorage(Paths.get(downloadPath)))
-            .torrent(file.toURI().toURL())
-            .autoLoadModules()
-            .module(dhtModule)
-            .build()
-    }
-
-    private fun buildMagnetClient(link: String): BtClient {
-        val config = defaultConfig()
-        val dhtModule = DHTModule(buildDhtConfig())
-
-        return Bt.client()
-            .config(config)
-            .storage(FileSystemStorage(Paths.get(downloadPath)))
-            .magnet(link)
-            .autoLoadModules()
-            .module(dhtModule)
-            .build()
-    }
-
-    private fun inferMagnetName(link: String): String {
-        val short = if (link.length > 20) link.substring(0, 20) + "..." else link
-        return "Magnet: $short"
-    }
-}
-
 fun main() = application {
+    val engine = remember { TorrentEngine(Paths.get(System.getProperty("user.home"), "Downloads", "HTorrent")) }
+    androidx.compose.runtime.DisposableEffect(engine) { onDispose { engine.close() } }
     Window(
         onCloseRequest = ::exitApplication,
-        title = "HTorrent v1.0.0 [Build 20251001 AMD64]",
+        title = "HTorrent v1.0.0",
         state = rememberWindowState(width = 984.dp, height = 521.dp)
     ) {
         MaterialTheme(
@@ -255,11 +64,8 @@ fun main() = application {
             ),
             typography = MaterialTheme.typography
         ) {
-            val engine = remember {
-                TorrentEngine(Paths.get(System.getProperty("user.home"), "Downloads", "HTorrent"))
-            }
             val torrents = engine.items
-            val statusText = buildStatusText(torrents)
+            val statusText = buildStatusText(torrents) + " | " + engine.engineStatus
 
             AttractorWindow(
                 downloadPath = engine.downloadPath,
@@ -274,6 +80,8 @@ fun main() = application {
                     if (!link.isNullOrBlank()) engine.addMagnet(link)
                 },
                 onStart = { engine.startAll() },
+                onFiles = { engine.showFiles(it) },
+                onLimits = { engine.showLimits() },
                 onPause = { engine.pauseAll() },
                 onStop = { engine.stopAll() },
                 onRemove = { engine.removeAll() },
@@ -286,15 +94,11 @@ fun main() = application {
     }
 }
 
-internal fun findAvailablePort(): Int {
-    ServerSocket(0).use { return it.localPort }
-}
-
 private fun buildStatusText(torrents: List<TorrentRow>): String {
-    val activeCount = torrents.count { it.status.lowercase(Locale.getDefault()) in listOf("downloading", "seeding", "queued") }
+    val activeCount = torrents.count { it.status.lowercase(Locale.getDefault()) in listOf("downloading", "seeding", "metadata", "initializing") }
     val totalDown = torrents.sumOf { it.downSpeed }
     val totalUp = torrents.sumOf { it.upSpeed }
-    return "Active: $activeCount/${torrents.size} | ? ${formatBytes(totalDown)}/s | ? ${formatBytes(totalUp)}/s"
+    return "Active: $activeCount/${torrents.size} | Down ${formatBytes(totalDown)}/s | Up ${formatBytes(totalUp)}/s"
 }
 
 @Composable
@@ -308,7 +112,9 @@ private fun AttractorWindow(
     onPause: () -> Unit,
     onStop: () -> Unit,
     onRemove: () -> Unit,
-    onChangePath: () -> Unit
+    onChangePath: () -> Unit,
+    onFiles: (String) -> Unit = {},
+    onLimits: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -323,12 +129,13 @@ private fun AttractorWindow(
                 "Pause" to onPause,
                 "Stop" to onStop,
                 "Remove" to onRemove,
-                "Change Path" to onChangePath
+                "Change Path" to onChangePath,
+                "Speed Limits" to onLimits
             )
         )
 
         Text(
-            text = "Download Path: $downloadPath",
+            text = "Download Path: $downloadPath  |  Click a torrent for files and streaming",
             style = TextStyle(
                 fontFamily = FontFamily.SansSerif,
                 fontSize = 12.sp,
@@ -339,6 +146,7 @@ private fun AttractorWindow(
 
         TablePanel(
             torrents = torrents,
+            onFiles = onFiles,
             modifier = Modifier.padding(horizontal = 12.dp)
         )
 
@@ -421,6 +229,7 @@ private fun ToolButton(
 @Composable
 private fun TablePanel(
     torrents: List<TorrentRow>,
+    onFiles: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val columnWidths = listOf(350.dp, 100.dp, 120.dp, 120.dp, 120.dp, 80.dp)
@@ -459,6 +268,7 @@ private fun TablePanel(
                 }
             }
 
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             torrents.forEachIndexed { rowIndex, row ->
                 val rowColor = when (row.status.lowercase(Locale.getDefault())) {
                     "downloading", "hashing", "metadata" -> ActiveGreen
@@ -472,6 +282,7 @@ private fun TablePanel(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(22.dp)
+                        .clickable { onFiles(row.id) }
                         .background(if (rowIndex % 2 == 0) Color(0xFFFFFFFF) else Color(0xFFF8F8F8)),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -501,6 +312,7 @@ private fun TablePanel(
                         }
                     }
                 }
+            }
             }
         }
     }
