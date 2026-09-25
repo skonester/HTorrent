@@ -94,6 +94,8 @@ val packageApp by tasks.registering(Sync::class) {
         into("player")
     }
 
+    // HTorrent's own license (GPL-3.0), from the repository root.
+    from("../../LICENSE") { rename { "LICENSE.txt" } }
     from("RQBIT-NOTICE.md")
     from("TORRENTSEARCH-NOTICE.md")
     from("licenses") { into("licenses") }
