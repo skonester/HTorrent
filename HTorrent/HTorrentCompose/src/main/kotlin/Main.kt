@@ -20,78 +20,122 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import java.awt.image.BufferedImage
 import java.io.File
 import java.nio.file.Paths
 import java.util.Locale
+import javax.imageio.ImageIO
+import javax.swing.JOptionPane
+import javax.swing.SwingUtilities
 
-private val BackgroundGray = Color(0xFFF1F1F1)
-private val PanelGray = Color(0xFFE6E6E6)
-private val BorderGray = Color(0xFFC5C5C5)
-private val TextDark = Color(0xFF1F1F1F)
-private val HeaderText = Color(0xFF3A3A3A)
-private val ActiveGreen = Color(0xFF008000)
-private val ActiveBlue = Color(0xFF0000B0)
-private val StoppedGray = Color(0xFF808080)
-private val ErrorRed = Color(0xFFB22222)
+internal val BackgroundGray = Color(0xFFF1F1F1)
+internal val PanelGray = Color(0xFFE6E6E6)
+internal val BorderGray = Color(0xFFC5C5C5)
+internal val TextDark = Color(0xFF1F1F1F)
+internal val HeaderText = Color(0xFF3A3A3A)
+internal val ActiveGreen = Color(0xFF008000)
+internal val ActiveBlue = Color(0xFF0000B0)
+internal val StoppedGray = Color(0xFF808080)
+internal val ErrorRed = Color(0xFFB22222)
 
-fun main() = application {
-    val engine = remember { TorrentEngine(Paths.get(System.getProperty("user.home"), "Downloads", "HTorrent")) }
-    androidx.compose.runtime.DisposableEffect(engine) { onDispose { engine.close() } }
-    Window(
-        onCloseRequest = ::exitApplication,
-        title = "HTorrent v1.0.0",
-        state = rememberWindowState(width = 984.dp, height = 521.dp)
-    ) {
-        MaterialTheme(
-            colors = MaterialTheme.colors.copy(
-                primary = Color(0xFF2D2D2D),
-                background = BackgroundGray,
-                surface = BackgroundGray,
-                onPrimary = Color.White,
-                onSurface = TextDark
-            ),
-            typography = MaterialTheme.typography
+// Same artwork as icon/favicon.ico (used for the .exe); the JVM cannot decode .ico itself.
+private val appIconImage: BufferedImage? = runCatching {
+    Thread.currentThread().contextClassLoader.getResourceAsStream("htorrent-icon.png")?.use(ImageIO::read)
+}.getOrNull()
+
+fun main() {
+    // Swing dialogs opened with a null parent (file pickers, prompts, errors) are owned by this shared frame.
+    appIconImage?.let { image -> SwingUtilities.invokeLater { JOptionPane.getRootFrame().iconImage = image } }
+    application {
+        val engine = remember { TorrentEngine(Paths.get(System.getProperty("user.home"), "Downloads", "HTorrent")) }
+        androidx.compose.runtime.DisposableEffect(engine) { onDispose { engine.close() } }
+        val search = remember { SearchController(onDownload = engine::addMagnet) }
+        androidx.compose.runtime.DisposableEffect(search) { onDispose { search.close() } }
+        val appIcon = remember { appIconImage?.let { BitmapPainter(it.toComposeImageBitmap()) } }
+        var searchOpen by remember { mutableStateOf(false) }
+        var searchRaise by remember { mutableStateOf(0) }
+        Window(
+            onCloseRequest = ::exitApplication,
+            title = "HTorrent v1.0.0",
+            icon = appIcon,
+            state = rememberWindowState(width = 984.dp, height = 521.dp)
         ) {
-            val torrents = engine.items
-            val statusText = buildStatusText(torrents) + " | " + engine.engineStatus
+            HTorrentTheme {
+                val torrents = engine.items
+                val statusText = buildStatusText(torrents) + " | " + engine.engineStatus
 
-            AttractorWindow(
-                downloadPath = engine.downloadPath,
-                torrents = torrents,
-                statusText = statusText,
-                onAddTorrent = {
-                    val file = pickFile("Select Torrent Files")
-                    if (file != null) engine.addTorrentFile(file)
-                },
-                onAddMagnet = {
-                    val link = JOptionPanePrompt("Enter Magnet Link")
-                    if (!link.isNullOrBlank()) engine.addMagnet(link)
-                },
-                onStart = { engine.startAll() },
-                onFiles = { engine.showFiles(it) },
-                onLimits = { engine.showLimits() },
-                onPause = { engine.pauseAll() },
-                onStop = { engine.stopAll() },
-                onRemove = { engine.removeAll() },
-                onChangePath = {
-                    val chosen = pickDirectory("Select Download Folder")
-                    if (chosen != null) engine.setDownloadPath(chosen.toPath())
-                }
-            )
+                AttractorWindow(
+                    downloadPath = engine.downloadPath,
+                    torrents = torrents,
+                    statusText = statusText,
+                    onSearch = { searchOpen = true; searchRaise++ },
+                    onAddTorrent = {
+                        val file = pickFile("Select Torrent Files")
+                        if (file != null) engine.addTorrentFile(file)
+                    },
+                    onAddMagnet = {
+                        val link = JOptionPanePrompt("Enter Magnet Link")
+                        if (!link.isNullOrBlank()) engine.addMagnet(link)
+                    },
+                    onStart = { engine.startAll() },
+                    onFiles = { engine.showFiles(it) },
+                    onLimits = { engine.showLimits() },
+                    onPause = { engine.pauseAll() },
+                    onStop = { engine.stopAll() },
+                    onRemove = { engine.removeAll() },
+                    onChangePath = {
+                        val chosen = pickDirectory("Select Download Folder")
+                        if (chosen != null) engine.setDownloadPath(chosen.toPath())
+                    }
+                )
+            }
+        }
+        if (searchOpen) {
+            Window(
+                onCloseRequest = { searchOpen = false },
+                title = "HTorrent - Search",
+                icon = appIcon,
+                state = rememberWindowState(width = 900.dp, height = 600.dp)
+            ) {
+                LaunchedEffect(searchRaise) { window.toFront() }
+                HTorrentTheme { SearchScreen(search) }
+            }
         }
     }
+}
+
+@Composable
+private fun HTorrentTheme(content: @Composable () -> Unit) {
+    MaterialTheme(
+        colors = MaterialTheme.colors.copy(
+            primary = Color(0xFF2D2D2D),
+            background = BackgroundGray,
+            surface = BackgroundGray,
+            onPrimary = Color.White,
+            onSurface = TextDark
+        ),
+        typography = MaterialTheme.typography,
+        content = content
+    )
 }
 
 private fun buildStatusText(torrents: List<TorrentRow>): String {
@@ -114,7 +158,8 @@ private fun AttractorWindow(
     onRemove: () -> Unit,
     onChangePath: () -> Unit,
     onFiles: (String) -> Unit = {},
-    onLimits: () -> Unit = {}
+    onLimits: () -> Unit = {},
+    onSearch: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -130,7 +175,8 @@ private fun AttractorWindow(
                 "Stop" to onStop,
                 "Remove" to onRemove,
                 "Change Path" to onChangePath,
-                "Speed Limits" to onLimits
+                "Speed Limits" to onLimits,
+                "Search Torrents" to onSearch
             )
         )
 
@@ -150,24 +196,31 @@ private fun AttractorWindow(
             modifier = Modifier.padding(horizontal = 12.dp)
         )
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(22.dp)
-                .background(Color(0xFFF6F6F6))
-                .border(BorderStroke(1.dp, BorderGray)),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            Text(
-                text = statusText,
-                style = TextStyle(
-                    fontFamily = FontFamily.SansSerif,
-                    fontSize = 12.sp,
-                    color = TextDark
-                ),
-                modifier = Modifier.padding(start = 8.dp)
-            )
-        }
+        StatusBar(statusText)
+    }
+}
+
+@Composable
+internal fun StatusBar(text: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(22.dp)
+            .background(Color(0xFFF6F6F6))
+            .border(BorderStroke(1.dp, BorderGray)),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Text(
+            text = text,
+            style = TextStyle(
+                fontFamily = FontFamily.SansSerif,
+                fontSize = 12.sp,
+                color = TextDark
+            ),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(start = 8.dp)
+        )
     }
 }
 
@@ -184,7 +237,7 @@ private fun ToolStrip(
         verticalAlignment = Alignment.CenterVertically
     ) {
         buttons.forEachIndexed { index, (text, action) ->
-            if (index == 2 || index == 5) {
+            if (index == 2 || index == 5 || index == 8) {
                 Spacer(modifier = Modifier.width(8.dp))
             }
 
@@ -198,17 +251,20 @@ private fun ToolStrip(
 }
 
 @Composable
-private fun ToolButton(
+internal fun ToolButton(
     text: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
     Button(
         onClick = onClick,
         modifier = modifier.height(22.dp),
+        enabled = enabled,
         colors = ButtonDefaults.buttonColors(
             backgroundColor = Color.Transparent,
-            contentColor = Color.Black
+            contentColor = Color.Black,
+            disabledBackgroundColor = Color.Transparent
         ),
         elevation = null,
         border = null,
@@ -220,7 +276,7 @@ private fun ToolButton(
                 fontFamily = FontFamily.SansSerif,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Normal,
-                color = TextDark
+                color = if (enabled) TextDark else StoppedGray
             )
         )
     }
@@ -318,7 +374,7 @@ private fun TablePanel(
     }
 }
 
-private fun formatBytes(bytes: Long): String {
+internal fun formatBytes(bytes: Long): String {
     val sizes = listOf("B", "KB", "MB", "GB", "TB")
     var len = bytes.toDouble()
     var order = 0
