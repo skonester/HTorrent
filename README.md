@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="images/HTorrent.png" alt="HTorrent logo" width="200">
+</p>
+
 # HTorrent
 
 HTorrent is a modern, lightweight BitTorrent client for Windows by Skonester, inspired by the discontinued Halite torrent client. It downloads torrents and magnet links, searches public torrent sites, and plays video or audio in its own player, **HTorrentPlayer**, while the torrent is still downloading.
