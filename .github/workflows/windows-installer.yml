@@ -31,7 +31,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -54,7 +54,7 @@ jobs:
           $version = "$line".Substring(9).Trim()
           "value=$version" >> $env:GITHUB_OUTPUT
           if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") {
-            throw "Tag $env:GITHUB_REF_NAME does not match version $version in build.gradle.kts. Bump the version (build.gradle.kts, launcher csproj, window title) before tagging."
+            throw "Tag $env:GITHUB_REF_NAME does not match version $version in build.gradle.kts. Bump the version (build.gradle.kts, launcher csproj, player fsproj, window title) before tagging."
           }
 
       - name: Test

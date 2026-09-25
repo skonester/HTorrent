@@ -24,6 +24,7 @@ internal class TorrentEngine(initialDownloadPath: Path) : AutoCloseable {
     private val worker = Executors.newSingleThreadScheduledExecutor { task -> Thread(task, "htorrent-ui-bridge").apply { isDaemon = true } }
     private var session: Session? = null
     private var api: HttpApi? = null
+    private val player = StreamPlayer()
     private var last = emptyMap<String, TorrentSnapshot>()
     private var lastTime = System.nanoTime()
     @Volatile private var closed = false
@@ -60,10 +61,7 @@ internal class TorrentEngine(initialDownloadPath: Path) : AutoCloseable {
                 box.isEnabled = !file.padding
                 row.add(box, java.awt.BorderLayout.CENTER)
                 if (!file.padding && port != null) row.add(javax.swing.JButton("Stream").apply {
-                    addActionListener {
-                        runCatching { java.awt.Desktop.getDesktop().browse(java.net.URI("http://127.0.0.1:$port/torrents/$id/stream/$index")) }
-                            .onFailure { javax.swing.JOptionPane.showMessageDialog(null, it.message, "HTorrent", javax.swing.JOptionPane.ERROR_MESSAGE) }
-                    }
+                    addActionListener { player.open("http://127.0.0.1:$port/torrents/$id/stream/$index", file.path.last()) }
                 }, java.awt.BorderLayout.EAST)
                 panel.add(row)
                 box
@@ -126,6 +124,7 @@ internal class TorrentEngine(initialDownloadPath: Path) : AutoCloseable {
     }
     override fun close() {
         closed = true
+        player.close()
         worker.execute { api?.close(); session?.close() }
         worker.shutdown()
         worker.awaitTermination(5, TimeUnit.SECONDS)

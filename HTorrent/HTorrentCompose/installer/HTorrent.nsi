@@ -59,15 +59,20 @@ VIAddVersionKey "LegalCopyright" "Copyright (c) 2026 ${PUBLISHER}"
 
 !insertmacro MUI_LANGUAGE "English"
 
-; The launcher and the jpackage runtime are both named HTorrent.exe. CSV output starts with the
-; quoted image name when it is running, and with a localized "INFO:" line when it is not.
+; The launcher and the jpackage runtime are both named HTorrent.exe; the stream player is HTorrentPlayer.exe.
+; CSV output starts with the quoted image name when it is running, and with a localized "INFO:" line when it is not.
 !macro WaitForAppExit
   app_running_check:
   nsExec::ExecToStack 'tasklist /FI "IMAGENAME eq HTorrent.exe" /NH /FO CSV'
   Pop $0
   Pop $1
   StrCpy $2 $1 14
+  nsExec::ExecToStack 'tasklist /FI "IMAGENAME eq HTorrentPlayer.exe" /NH /FO CSV'
+  Pop $0
+  Pop $1
+  StrCpy $3 $1 20
   ${If} $2 == '"HTorrent.exe"'
+  ${OrIf} $3 == '"HTorrentPlayer.exe"'
     MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "${APP_NAME} is running. Close it, then click Retry." /SD IDCANCEL IDRETRY app_running_check
     Abort
   ${EndIf}
@@ -95,8 +100,9 @@ Section "${APP_NAME}" SecApp
   !insertmacro WaitForAppExit
   SetShellVarContext all
   SetOutPath "$INSTDIR"
-  ; Drop the previous version's JRE/JARs so upgrades never mix old and new jars.
+  ; Drop the previous version's JRE/JARs and player so upgrades never mix old and new files.
   RMDir /r "$INSTDIR\runtime"
+  RMDir /r "$INSTDIR\player"
   File /r "${SOURCE_DIR}\*.*"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
 
@@ -131,6 +137,7 @@ Section "Uninstall"
   RMDir /r "$SMPROGRAMS\${APP_NAME}"
 
   RMDir /r "$INSTDIR\runtime"
+  RMDir /r "$INSTDIR\player"
   RMDir /r "$INSTDIR\licenses"
   Delete "$INSTDIR\HTorrent.exe"
   Delete "$INSTDIR\RQBIT-NOTICE.md"

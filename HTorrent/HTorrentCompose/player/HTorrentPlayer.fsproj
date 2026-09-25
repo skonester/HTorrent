@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>HTorrentPlayer</RootNamespace>
+    <AssemblyName>HTorrentPlayer</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\icon\favicon.ico</ApplicationIcon>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+
+    <!-- InfiniFrame pulls in the whole ASP.NET Core framework. Partial trimming drops the unused framework
+         assemblies (~109 MB -> ~39 MB) and leaves F#/InfiniFrame untouched; the window messages use reflection JSON. -->
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>partial</TrimMode>
+    <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
+
+    <!-- Assembly / EXE metadata — this is what Windows shows in Properties -->
+    <Product>HTorrentPlayer</Product>
+    <Company>Skonester</Company>
+    <Authors>Skonester</Authors>
+    <Version>1.0.0</Version>
+    <FileVersion>1.0.0.0</FileVersion>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <Copyright>Copyright © 2026 Skonester</Copyright>
+    <Description>HTorrentPlayer - Streaming media player for HTorrent</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="PlayerWindow.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="InfiniLore.InfiniFrame" Version="0.12.0" />
+    <PackageReference Include="InfiniLore.InfiniFrame.Shared" Version="0.12.0" />
+  </ItemGroup>
+
+  <!-- The page is loaded from disk next to the EXE; the icons are shared with HTorrent itself. -->
+  <ItemGroup>
+    <Content Include="web\**" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\icon\favicon.ico" Link="web\icon.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\src\main\resources\htorrent-icon.png" Link="web\icon.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

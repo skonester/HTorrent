@@ -37,6 +37,7 @@ compose.desktop {
 //   build/dist/HTorrent/
 //     HTorrent.exe          <- native .NET launcher stub
 //     runtime/              <- createDistributable output (JRE + JARs + jpackage launcher)
+//     player/               <- HTorrentPlayer (InfiniFrame/WebView2 stream player)
 // ---------------------------------------------------------------------------
 val buildLauncher by tasks.registering(Exec::class) {
     description = "Builds the native .NET launcher stub EXE"
@@ -52,10 +53,27 @@ val buildLauncher by tasks.registering(Exec::class) {
     )
 }
 
-val packageApp by tasks.registering(Copy::class) {
+val buildPlayer by tasks.registering(Exec::class) {
+    description = "Builds HTorrentPlayer, the InfiniFrame stream player"
+    group = "distribution"
+    workingDir = project.file("player")
+    val playerOut = project.layout.buildDirectory.dir("player-out")
+    doFirst { delete(playerOut) }
+    commandLine(
+        "dotnet", "publish",
+        "HTorrentPlayer.fsproj",
+        "-c", "Release",
+        "-r", "win-x64",
+        "--self-contained", "true",
+        "-o", project.layout.buildDirectory.dir("player-out").get().asFile.absolutePath
+    )
+}
+
+// Sync (not Copy) so files dropped from runtime/ or player/ do not linger in the dist folder and installer.
+val packageApp by tasks.registering(Sync::class) {
     description = "Assembles the final HTorrent distribution folder"
     group = "distribution"
-    dependsOn("createDistributable", buildLauncher)
+    dependsOn("createDistributable", buildLauncher, buildPlayer)
 
     val distName = providers.gradleProperty("distName").getOrElse("HTorrent")
     require(distName.matches(Regex("[A-Za-z0-9_-]+")))
@@ -69,6 +87,11 @@ val packageApp by tasks.registering(Copy::class) {
     // Copy the launcher stub EXE to the root
     from(project.layout.buildDirectory.dir("launcher-out")) {
         include("HTorrent.exe")
+    }
+
+    from(project.layout.buildDirectory.dir("player-out")) {
+        exclude("*.pdb")
+        into("player")
     }
 
     from("RQBIT-NOTICE.md")
@@ -117,4 +140,4 @@ val packageInstaller by tasks.registering(Exec::class) {
     doLast { println("Installer: ${setupExe.absolutePath}") }
 }
 
-kotlin { jvmToolchain(17) }
+kotlin { jvmToolchain(21) }
