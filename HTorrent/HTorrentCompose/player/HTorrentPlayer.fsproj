@@ -41,6 +41,7 @@
     <Content Include="web\**" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\icon\favicon.ico" Link="web\icon.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\src\main\resources\htorrent-icon.png" Link="web\icon.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\icon\HTorrent.png" Link="web\logo.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

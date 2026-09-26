@@ -5,1291 +5,259 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HTorrentPlayer</title>
     <link rel="icon" href="icon.png" sizes="32x32" type="image/png">
-    <!-- Modern Typography -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
-
-    <style>
-        :root {
-            /* Sleek Modern Dark Palette */
-            --bg-color: #050505;
-            --text-color: #ffffff;
-            --accent-color: #ff88bb; /* HTorrentPlayer accent */
-            --panel-bg: rgba(15, 15, 20, 0.4);
-            --panel-border: rgba(255, 255, 255, 0.08);
-            --hover-bg: rgba(255, 255, 255, 0.1);
-            --blur: blur(24px);
-            --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            user-select: none;
-            font-family: 'Inter', sans-serif;
-        }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            height: 100vh;
-            width: 100vw;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
-
-        /* Seamless Edge-to-Edge Video Area */
-        #video-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #000;
-            z-index: 1;
-        }
-
-        #video-layer {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            transition: opacity 0.5s;
-            will-change: transform;
-            transform: translateZ(0);
-        }
-
-        /* Stylish Drag and Drop Overlay */
-        #drop-overlay {
-            position: absolute;
-            top: 60px;
-            left: 30px;
-            right: 30px;
-            bottom: 20px;
-            border: 2px dashed rgba(255, 255, 255, 0.15);
-            border-radius: 32px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 2;
-            pointer-events: none;
-            transition: var(--transition);
-        }
-
-        #drop-overlay.active {
-            border-color: var(--accent-color);
-            background: rgba(255, 136, 187, 0.05);
-            transform: scale(0.98);
-        }
-
-        .drop-icon {
-            width: 72px;
-            height: 72px;
-            margin-bottom: 24px;
-            opacity: 0.6;
-            color: var(--accent-color);
-        }
-
-        .drop-text {
-            font-size: 1.25rem;
-            font-weight: 300;
-            letter-spacing: 4px;
-            color: rgba(255, 255, 255, 0.6);
-        }
-
-        /* Glassmorphism Control Panel */
-        #controls-wrapper {
-            position: absolute;
-            bottom: 40px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 90%;
-            max-width: 900px;
-            z-index: 100;
-            transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.6s;
-        }
-
-        body.idle #controls-wrapper {
-            transform: translate(-50%, 120px) scale(0.95);
-            opacity: 0;
-            pointer-events: none;
-        }
-
-
-
-        .glass-panel {
-            background: var(--panel-bg);
-            backdrop-filter: var(--blur);
-            -webkit-backdrop-filter: var(--blur);
-            border: 1px solid var(--panel-border);
-            border-radius: 24px;
-            padding: 20px 28px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.6), 
-                        inset 0 1px 1px rgba(255,255,255,0.1),
-                        0 0 20px rgba(255, 136, 187, 0.05);
-            transition: var(--transition);
-        }
-
-        .glass-panel:hover {
-            border-color: rgba(255, 255, 255, 0.2);
-            box-shadow: 0 25px 50px rgba(0,0,0,0.8), 
-                        inset 0 1px 1px rgba(255,255,255,0.15),
-                        0 0 30px rgba(255, 136, 187, 0.1);
-        }
-
-        /* Precision Seekbar */
-        .seek-container {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .time-display {
-            font-size: 13px;
-            font-weight: 400;
-            font-variant-numeric: tabular-nums;
-            color: rgba(255,255,255,0.6);
-            letter-spacing: 0.5px;
-            min-width: 50px;
-            text-align: center;
-        }
-
-        input[type=range] {
-            -webkit-appearance: none;
-            width: 100%;
-            background: transparent;
-            height: 24px;
-            cursor: pointer;
-        }
-
-        input[type=range]:focus {
-            outline: none;
-        }
-
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 6px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 3px;
-            transition: height 0.2s, background 0.2s;
-        }
-
-        input[type=range]:hover::-webkit-slider-runnable-track {
-            height: 8px;
-            background: rgba(255,255,255,0.15);
-        }
-
-        /* How much of a torrent stream has arrived, set from JS as --buffered */
-        #seek-bar::-webkit-slider-runnable-track {
-            background: linear-gradient(to right, rgba(255,255,255,0.28) var(--buffered, 0%), rgba(255,255,255,0.1) var(--buffered, 0%));
-        }
-
-        #seek-bar:hover::-webkit-slider-runnable-track {
-            background: linear-gradient(to right, rgba(255,255,255,0.35) var(--buffered, 0%), rgba(255,255,255,0.15) var(--buffered, 0%));
-        }
-
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 18px;
-            width: 18px;
-            border-radius: 50%;
-            background: var(--accent-color);
-            margin-top: -6px;
-            box-shadow: 0 0 15px rgba(255, 136, 187, 0.4);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        input[type=range]:hover::-webkit-slider-thumb {
-            transform: scale(1.3);
-            box-shadow: 0 0 20px rgba(255, 136, 187, 0.6);
-        }
-
-        /* Lower Deck: Metadata and Buttons */
-        .controls-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .now-playing {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            padding-right: 20px;
-        }
-
-        .np-title {
-            font-size: 16px;
-            font-weight: 600;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            color: rgba(255, 255, 255, 0.95);
-        }
-
-        .np-status {
-            font-size: 12px;
-            color: var(--accent-color);
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            margin-top: 4px;
-            font-weight: 600;
-        }
-
-        .playback-buttons {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .btn {
-            background: none;
-            border: none;
-            color: rgba(255,255,255,0.7);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            transition: var(--transition);
-            width: 44px;
-            height: 44px;
-        }
-
-        .btn:hover {
-            background: var(--hover-bg);
-            color: white;
-        }
-
-        .btn.play-btn {
-            background: var(--accent-color);
-            color: #000;
-            width: 56px;
-            height: 56px;
-            box-shadow: 0 10px 20px rgba(255, 136, 187, 0.2);
-        }
-
-        .btn.play-btn:hover {
-            box-shadow: 0 12px 25px rgba(255, 136, 187, 0.4);
-            transform: scale(1.08);
-            color: #000;
-            background: #ffb3d6;
-        }
-
-        .btn svg {
-            width: 22px;
-            height: 22px;
-            fill: currentColor;
-        }
-
-        .btn.play-btn svg {
-            width: 26px;
-            height: 26px;
-        }
-
-        .side-controls {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            flex: 1;
-            justify-content: flex-end;
-        }
-
-        .vol-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            width: 120px;
-        }
-
-        .speed-select {
-            width: 64px;
-            height: 32px;
-            border: 1px solid var(--panel-border);
-            border-radius: 8px;
-            background: rgba(0,0,0,0.35);
-            color: rgba(255,255,255,0.82);
-            font-size: 12px;
-            text-align: center;
-            outline: none;
-        }
-
-        #stats-overlay {
-            position: absolute;
-            top: 18px;
-            right: 18px;
-            z-index: 120;
-            display: none;
-            min-width: 220px;
-            padding: 12px 14px;
-            border: 1px solid rgba(255,255,255,0.16);
-            border-radius: 8px;
-            background: rgba(0,0,0,0.68);
-            color: rgba(255,255,255,0.82);
-            font-family: Consolas, monospace;
-            font-size: 12px;
-            line-height: 1.5;
-            pointer-events: none;
-        }
-
-        /* Classic Windows 2000 Style Context Menu */
-        #context-menu {
-            position: absolute;
-            background: #d4d0c8;
-            border-top: 2px solid #fff;
-            border-left: 2px solid #fff;
-            border-right: 2px solid #404040;
-            border-bottom: 2px solid #404040;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
-            padding: 2px;
-            display: none;
-            z-index: 10000;
-            min-width: 180px;
-            font-family: 'Tahoma', sans-serif;
-            font-size: 11px;
-            color: #000;
-        }
-
-        .menu-item {
-            padding: 4px 20px;
-            cursor: pointer;
-            position: relative;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-family: 'Tahoma', sans-serif;
-            font-size: 11px;
-            color: #000;
-            background: none;
-            border: none;
-            text-align: left;
-            width: 100%;
-        }
-
-        .menu-item:hover {
-            background-color: #000080;
-            color: #fff;
-        }
-
-        .menu-item.has-submenu::after {
-            content: '▶';
-            font-size: 8px;
-            margin-left: 10px;
-        }
-
-        .submenu {
-            position: absolute;
-            top: -2px;
-            left: 100%;
-            background: #d4d0c8;
-            border-top: 2px solid #fff;
-            border-left: 2px solid #fff;
-            border-right: 2px solid #404040;
-            border-bottom: 2px solid #404040;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
-            padding: 2px;
-            display: none;
-            min-width: 180px;
-        }
-
-        .menu-item:hover > .submenu {
-            display: block;
-        }
-
-        .menu-separator {
-            height: 0;
-            border-top: 1px solid #808080;
-            border-bottom: 1px solid #fff;
-            margin: 3px 2px;
-        }
-
-        /* Idle Logo Layer */
-        #logo-layer {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 5;
-            transition: opacity 0.5s;
-        }
-
-        #logo-image {
-            width: 128px;
-            height: 128px;
-            image-rendering: pixelated; /* the HTorrent icon is 32x32 */
-            filter: drop-shadow(0 0 30px rgba(255, 136, 187, 0.3));
-        }
-
-        .logo-bounce {
-            animation: bounce 2s infinite ease-in-out;
-        }
-
-        @keyframes bounce {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-
-        /* Scanlines Overlay */
-        #scanlines {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
-            background-size: 100% 4px, 3px 100%;
-            pointer-events: none;
-            z-index: 10;
-            display: none;
-        }
-        /* Help Overlay */
-        #help-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.85);
-            backdrop-filter: blur(10px);
-            z-index: 5000;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 40px;
-        }
-
-        .help-content {
-            max-width: 600px;
-            width: 100%;
-        }
-
-        .shortcut-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-top: 30px;
-        }
-
-        .shortcut-item {
-            display: flex;
-            justify-content: space-between;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            padding-bottom: 5px;
-        }
-
-        .key {
-            background: rgba(255,255,255,0.1);
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            border: 1px solid rgba(255,255,255,0.2);
-            color: var(--accent-color);
-        }
-    </style>
+    <!-- The interface is adapted from Perdanga VSP (MIT), see licenses/Perdanga-VSP-LICENSE.txt. -->
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
+<!-- Ambilight: a blurred copy of the video glowing in the letterbox areas -->
+<canvas id="ambilight" width="160" height="90"></canvas>
 
-
-<!-- Ambilight Background Glow -->
-<canvas id="ambilight-canvas" style="position: absolute; top: -5%; left: -5%; width: 110%; height: 110%; filter: blur(60px); opacity: 0.4; z-index: 0; pointer-events: none; will-change: filter; transform: translateZ(0);"></canvas>
-<div id="stats-overlay"></div>
-
-<!-- Main Video Layer -->
-<div id="video-container" onmousedown="handleWindowDrag(event)">
-
-    <div id="drop-overlay">
-        <svg class="drop-icon" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.36 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
-        </svg>
-        <div class="drop-text">DROP MEDIA HERE</div>
+<div id="playerContainer">
+    <div id="videoStage">
+        <video id="video"></video>
+        <div id="scanlines"></div>
     </div>
-    <div id="logo-layer">
-        <img src="icon.png" id="logo-image" class="logo-bounce" draggable="false">
+    <div id="videoClickSurface"></div>
+
+    <div id="emptyState">
+        <div class="empty-state-content">
+            <img src="logo.png" class="main-logo" alt="" draggable="false">
+            <div class="title-glow">HTorrentPlayer</div>
+            <button class="btn-primary" id="emptyOpenBtn">Open Media File</button>
+            <div class="empty-hint">or drop a file here &middot; right-click for more &middot; press <b>?</b> for shortcuts</div>
+        </div>
     </div>
-    <div id="scanlines"></div>
-    <video id="video-layer"></video>
-</div>
 
-<!-- Floating Control Panel -->
-<div id="controls-wrapper">
-    <div class="glass-panel">
+    <div id="audioVisualizer">
+        <div class="audio-pulse-ring"></div>
+        <img src="logo.png" class="audio-logo" alt="" draggable="false">
+    </div>
 
-        <!-- Seekbar area -->
-        <div class="seek-container" style="position: relative;">
-            <span class="time-display" id="time-current">00:00</span>
-            <div id="seek-tooltip" style="position: absolute; bottom: 35px; background: rgba(0,0,0,0.8); padding: 4px 8px; border-radius: 4px; font-size: 11px; display: none; pointer-events: none; border: 1px solid var(--accent-color);">00:00</div>
-            <input type="range" id="seek-bar" value="0" min="0" max="100" step="0.1">
-            <span class="time-display" id="time-total">00:00</span>
+    <div id="bufferingSpinner"></div>
+
+    <div id="nowPlayingBanner">
+        <div class="np-filename" id="npFilename"></div>
+        <div class="np-status" id="npStatus"></div>
+    </div>
+
+    <div id="seekOverlay" class="seek-overlay">
+        <div class="seek-content">
+            <div class="seek-arrows" id="seekArrows"></div>
+            <div class="seek-text" id="seekText"></div>
+        </div>
+    </div>
+
+    <div id="osdAlert">
+        <span class="osd-title" id="osdTitle"></span>
+        <span class="osd-main" id="osdMain"></span>
+        <span class="osd-sub" id="osdSub"></span>
+    </div>
+
+    <div id="statsOverlay"></div>
+
+    <div id="timelineTooltip">
+        <div class="thumb-container" id="thumbContainer">
+            <video id="thumbVideo" muted preload="auto"></video>
+        </div>
+        <div id="thumbText">00:00</div>
+    </div>
+
+    <div id="controls">
+        <div class="progress-container">
+            <span id="currentTime" class="time-text">00:00</span>
+            <div id="progressWrapper">
+                <input type="range" id="progressBar" value="0" step="0.001" min="0" max="100" tabindex="-1">
+            </div>
+            <span id="duration" class="time-text">00:00</span>
         </div>
 
-        <!-- Controls area -->
-        <div class="controls-row">
-            <!-- Left: Metadata -->
-            <div class="now-playing">
-                <div class="np-title" id="np-title">No media loaded</div>
-                <div class="np-status" id="np-status">WAITING FOR FILE</div>
-            </div>
-
-            <!-- Center: Core Playback -->
-            <div class="playback-buttons">
-                <button class="btn" onclick="ctrlStop()" title="Stop">
+        <div class="control-row">
+            <div class="control-group left-controls">
+                <button class="icon-btn" id="playBtn" title="Play / Pause (Space)">
+                    <svg viewBox="0 0 24 24" id="playIcon"><path d="M8 5v14l11-7z"/></svg>
+                    <svg viewBox="0 0 24 24" id="pauseIcon" style="display:none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                </button>
+                <button class="icon-btn" id="stopBtn" title="Stop (S)">
                     <svg viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>
                 </button>
-                <button class="btn play-btn" onclick="togglePlay()" title="Play/Pause">
-                    <svg id="play-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+
+                <div class="switch-wrap volume-block" id="volumeWrap" title="Volume (scroll to adjust)">
+                    <button class="icon-btn" id="muteBtn" title="Mute (M)">
+                        <svg viewBox="0 0 24 24" id="volUpIcon"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+                        <svg viewBox="0 0 24 24" id="volMuteIcon" style="display:none;"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+                    </button>
+                    <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="1" tabindex="-1">
+                </div>
+
+                <div class="separator optional"></div>
+
+                <button class="icon-btn optional" id="loopBtn" title="Loop (L)">
+                    <svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
                 </button>
-                <button class="btn" onclick="document.getElementById('file-input').click()" title="Open Media">
-                    <svg viewBox="0 0 24 24"><path d="M5 17h14v2H5zm7-12L5.33 15h13.34z"/></svg>
-                </button>
+
+                <div class="separator optional"></div>
+
+                <div class="switch-wrap optional" id="speedWrap" title="Speed: scroll to change, click to reset">
+                    <button class="icon-btn speed-btn" id="speedBtn"><span id="speedLabel">1.0x</span></button>
+                </div>
             </div>
 
-            <!-- Right: Volume & Fullscreen -->
-            <div class="side-controls">
-                <select id="speed-select" class="speed-select" title="Playback Speed" onchange="setPlaybackRate(parseFloat(this.value))">
-                    <option value="0.5">0.5x</option>
-                    <option value="0.75">0.75x</option>
-                    <option value="1" selected>1x</option>
-                    <option value="1.25">1.25x</option>
-                    <option value="1.5">1.5x</option>
-                    <option value="2">2x</option>
-                </select>
-                <div class="vol-container">
-                    <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor;opacity:0.7;"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
-                    <input type="range" id="vol-bar" value="100" min="0" max="100">
+            <div class="control-group right-controls">
+                <button class="icon-btn" id="openBtn" title="Open Media (O)">
+                    <svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+                </button>
+                <button class="icon-btn optional" id="pipBtn" title="Picture-in-Picture (P)">
+                    <svg viewBox="0 0 24 24"><path d="M19 11h-8v6h8v-6zm4 8V4.98C23 3.88 22.1 3 21 3H3c-1.1 0-2 .88-2 1.98V19c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2zm-2 .02H3V4.97h18v14.05z"/></svg>
+                </button>
+
+                <div class="separator"></div>
+
+                <button class="icon-btn" id="menuBtn" title="More (right-click)">
+                    <svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                </button>
+                <button class="icon-btn" id="settingsBtn" title="Settings">
+                    <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+                </button>
+                <button class="icon-btn" id="fullscreenBtn" title="Fullscreen (F)">
+                    <svg viewBox="0 0 24 24" id="fsEnterIcon"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+                    <svg viewBox="0 0 24 24" id="fsExitIcon" style="display:none;"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right-click menu panels are built by js/menu.js -->
+    <div id="menuLayer"></div>
+
+    <div id="settingsModal" class="modal">
+        <div class="settings-panel">
+            <div class="settings-header">
+                <h2>Settings</h2>
+                <button class="icon-btn modal-close"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+            </div>
+            <div class="settings-body">
+                <div class="setting-group">
+                    <label for="accentColorPicker">Accent Color</label>
+                    <div class="setting-inline">
+                        <input type="color" id="accentColorPicker" value="#ff88bb">
+                        <button class="btn-small" id="accentResetBtn">Reset</button>
+                    </div>
                 </div>
-                <button class="btn" onclick="toggleStatsOverlay()" title="Playback Stats">
-                    <svg viewBox="0 0 24 24" style="width:20px;height:20px;"><path d="M5 19V5h2v14H5zm6 0V9h2v10h-2zm6 0V3h2v16h-2z"/></svg>
-                </button>
-                <button class="btn" onclick="toggleMaximize()" title="Maximize / Restore">
-                    <svg viewBox="0 0 24 24" style="width:20px;height:20px;"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
-                </button>
+                <div class="setting-group">
+                    <label for="controlsOpacitySlider">Control Bar Opacity</label>
+                    <input type="range" id="controlsOpacitySlider" min="0.2" max="1" step="0.05" value="0.8">
+                </div>
+                <div class="setting-group">
+                    <label for="controlsBlurSlider">Control Bar Blur</label>
+                    <input type="range" id="controlsBlurSlider" min="0" max="64" step="1" value="24">
+                </div>
+                <div class="setting-group">
+                    <label for="hideDelaySelect">Hide Controls While Playing</label>
+                    <select id="hideDelaySelect">
+                        <option value="1500">After 1.5 seconds</option>
+                        <option value="3000">After 3 seconds</option>
+                        <option value="5000">After 5 seconds</option>
+                        <option value="0">Never</option>
+                    </select>
+                </div>
+                <div class="setting-group row">
+                    <label for="ambilightToggle">Ambilight Glow</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="ambilightToggle">
+                        <span class="slider-toggle"></span>
+                    </label>
+                </div>
+                <div class="setting-group row">
+                    <label for="resumeToggle">Resume Where I Left Off</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="resumeToggle">
+                        <span class="slider-toggle"></span>
+                    </label>
+                </div>
+                <button class="btn-primary btn-block" id="openHotkeysBtn">View Keyboard Shortcuts</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="hotkeysModal" class="modal">
+        <div class="settings-panel hotkeys-panel">
+            <div class="settings-header">
+                <h2>Keyboard Shortcuts</h2>
+                <button class="icon-btn modal-close"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+            </div>
+            <div class="settings-body">
+                <div class="hotkey-row"><span class="hk-key">Space</span><span class="hk-desc">Play / Pause</span></div>
+                <div class="hotkey-row"><span class="hk-key">S</span><span class="hk-desc">Stop</span></div>
+                <div class="hotkey-row"><span class="hk-key">Left / Right</span><span class="hk-desc">Seek -/+ 5 seconds (press repeatedly to add up)</span></div>
+                <div class="hotkey-row"><span class="hk-key">Shift + Left / Right</span><span class="hk-desc">Seek -/+ 30 seconds</span></div>
+                <div class="hotkey-row"><span class="hk-key">Up / Down</span><span class="hk-desc">Volume up / down</span></div>
+                <div class="hotkey-row"><span class="hk-key">M</span><span class="hk-desc">Mute</span></div>
+                <div class="hotkey-row"><span class="hk-key">&lt; / &gt;</span><span class="hk-desc">Slower / faster playback</span></div>
+                <div class="hotkey-row"><span class="hk-key">L</span><span class="hk-desc">Loop</span></div>
+                <div class="hotkey-row"><span class="hk-key">F / Double Click</span><span class="hk-desc">Fullscreen</span></div>
+                <div class="hotkey-row"><span class="hk-key">P</span><span class="hk-desc">Picture-in-Picture</span></div>
+                <div class="hotkey-row"><span class="hk-key">I</span><span class="hk-desc">Playback stats</span></div>
+                <div class="hotkey-row"><span class="hk-key">A</span><span class="hk-desc">Ambilight glow</span></div>
+                <div class="hotkey-row"><span class="hk-key">O</span><span class="hk-desc">Open file</span></div>
+                <div class="hotkey-row"><span class="hk-key">U</span><span class="hk-desc">Open URL</span></div>
+                <div class="hotkey-row"><span class="hk-key">?</span><span class="hk-desc">This list</span></div>
+                <div class="hotkey-row"><span class="hk-key">Esc</span><span class="hk-desc">Close menus / leave fullscreen</span></div>
+                <div class="hotkey-row"><span class="hk-key">Scroll Wheel</span><span class="hk-desc">Over volume or speed to adjust</span></div>
+                <div class="hotkey-row"><span class="hk-key">Right Click</span><span class="hk-desc">Player menu</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="urlModal" class="modal">
+        <div class="settings-panel">
+            <div class="settings-header">
+                <h2>Open URL</h2>
+                <button class="icon-btn modal-close"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+            </div>
+            <form class="settings-body" id="urlForm">
+                <div class="setting-group">
+                    <label for="urlInput">Media URL (http or https)</label>
+                    <input type="text" id="urlInput" class="text-input" placeholder="https://example.com/video.mp4" spellcheck="false" autocomplete="off">
+                    <div class="field-error" id="urlError"></div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-small modal-close">Cancel</button>
+                    <button type="submit" class="btn-primary">Open</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="aboutModal" class="modal">
+        <div class="settings-panel about-panel">
+            <div class="settings-header">
+                <h2>About</h2>
+                <button class="icon-btn modal-close"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+            </div>
+            <div class="settings-body about-body">
+                <img src="logo.png" class="about-logo" alt="" draggable="false">
+                <div class="about-name">HTorrentPlayer</div>
+                <p>Streams torrents from HTorrent while they download.</p>
+                <p class="about-credits">By Skonester &middot; GPL-3.0<br>
+                    Interface adapted from Perdanga VSP by PerdangaSoftware (MIT)<br>
+                    Built on InfiniFrame and Microsoft Edge WebView2</p>
             </div>
         </div>
     </div>
 </div>
 
-<input type="file" id="file-input" style="display:none" accept="video/*,audio/*" onchange="handleFileSelect(event)">
-<input type="file" id="sub-input" style="display:none" accept=".vtt,.srt" onchange="handleSubSelect(event)">
-
-<!-- Classic Windows 2000 Right Click Menu -->
-<!-- Help Overlay -->
-<div id="help-overlay" onclick="toggleHelp()">
-    <div class="glass-panel help-content" onclick="event.stopPropagation()">
-        <h2 style="color: var(--accent-color); letter-spacing: 2px; font-weight: 300;">KEYBOARD SHORTCUTS</h2>
-        <div class="shortcut-grid">
-            <div class="shortcut-item"><span>Play / Pause</span> <span class="key">SPACE</span></div>
-            <div class="shortcut-item"><span>Stop</span> <span class="key">S</span></div>
-            <div class="shortcut-item"><span>Fullscreen</span> <span class="key">F</span></div>
-            <div class="shortcut-item"><span>Mute</span> <span class="key">M</span></div>
-            <div class="shortcut-item"><span>Seek Forward</span> <span class="key">→</span></div>
-            <div class="shortcut-item"><span>Seek Backward</span> <span class="key">←</span></div>
-            <div class="shortcut-item"><span>Volume Up</span> <span class="key">↑</span></div>
-            <div class="shortcut-item"><span>Volume Down</span> <span class="key">↓</span></div>
-            <div class="shortcut-item"><span>Open File</span> <span class="key">O</span></div>
-            <div class="shortcut-item"><span>Close Help</span> <span class="key">?</span></div>
-        </div>
-        <button class="btn" style="margin-top: 20px; width: 100%; border-radius: 12px;" onclick="toggleHelp()">CLOSE</button>
-    </div>
-</div>
-
-<div id="context-menu">
-    <div class="menu-item has-submenu">File
-        <div class="submenu">
-            <div class="menu-item" onclick="document.getElementById('file-input').click()">Open File...</div>
-            <div class="menu-item" onclick="openUrlPrompt()">Open URL...</div>
-            <div class="menu-item" onclick="closeMedia()">Close Media</div>
-            <div class="menu-separator"></div>
-            <div class="menu-item" onclick="postHostAction('close')">Exit</div>
-        </div>
-    </div>
-    <div class="menu-item has-submenu">Playback
-        <div class="submenu">
-            <div class="menu-item" onclick="togglePlay()">Play/Pause</div>
-            <div class="menu-item" onclick="ctrlStop()">Stop</div>
-            <div class="menu-separator"></div>
-            <div class="menu-item" onclick="video.currentTime += 30">Seek Forward 30s</div>
-            <div class="menu-item" onclick="video.currentTime -= 30">Seek Backward 30s</div>
-            <div class="menu-separator"></div>
-            <div class="menu-item has-submenu">Speed
-                <div class="submenu">
-                    <div class="menu-item" onclick="setPlaybackRate(0.5)">0.5x</div>
-                    <div class="menu-item" onclick="setPlaybackRate(1)">1x</div>
-                    <div class="menu-item" onclick="setPlaybackRate(1.25)">1.25x</div>
-                    <div class="menu-item" onclick="setPlaybackRate(1.5)">1.5x</div>
-                    <div class="menu-item" onclick="setPlaybackRate(2)">2x</div>
-                </div>
-            </div>
-            <div class="menu-separator"></div>
-            <div class="menu-item" onclick="toggleLoop()">Repeat Mode</div>
-            <div class="menu-item" onclick="toggleMute()">Mute</div>
-        </div>
-    </div>
-    <div class="menu-item has-submenu">Video Filters
-        <div class="submenu">
-            <div class="menu-item" onclick="adjustFilter('brightness', 0.1)">Brightness Up</div>
-            <div class="menu-item" onclick="adjustFilter('brightness', -0.1)">Brightness Down</div>
-            <div class="menu-separator"></div>
-            <div class="menu-item" onclick="toggleFilter('invert')">Negative (Invert)</div>
-            <div class="menu-item" onclick="toggleFilter('blur')">Soften (Blur)</div>
-            <div class="menu-item" onclick="toggleFilter('contrast')">Sharpen (Contrast)</div>
-            <div class="menu-item" onclick="toggleFilter('flip')">Flip Horizontal</div>
-            <div class="menu-item" onclick="toggleScanlines()">Scanlines</div>
-            <div class="menu-separator"></div>
-            <div class="menu-item" onclick="resetFilters()">Reset Filters</div>
-        </div>
-    </div>
-    <div class="menu-item has-submenu">Controls
-        <div class="submenu">
-            <div class="menu-item has-submenu">Aspect Ratio
-                <div class="submenu">
-                    <div class="menu-item" onclick="setAspect('contain')">Original</div>
-                    <div class="menu-item" onclick="setAspect('4/3')">TV 4:3</div>
-                    <div class="menu-item" onclick="setAspect('16/9')">Wide 16:9</div>
-                    <div class="menu-item" onclick="setAspect('cover')">Fill Screen</div>
-                </div>
-            </div>
-            <div class="menu-separator"></div>
-            <div id="mi-logo-bounce" class="menu-item" onclick="toggleLogoBounce()">Logo Bounce (Audio)</div>
-        </div>
-    </div>
-    <div class="menu-separator"></div>
-    <div class="menu-item" onclick="toggleFullscreen()">Toggle Fullscreen</div>
-    <div class="menu-item" onclick="togglePiP()">Picture-in-Picture</div>
-    <div class="menu-item" onclick="toggleStatsOverlay()">Playback Stats</div>
-    <div class="menu-separator"></div>
-    <div class="menu-item" onclick="alert('HTorrentPlayer\nStreams torrents from HTorrent while they download.')">About HTorrentPlayer...</div>
-</div>
-
-<script>
-    // InfiniFrame (WebView2) message handler
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.addEventListener('message', event => {
-            const data = event.data;
-            if (data.type) {
-                window.dispatchEvent(new CustomEvent(data.type, { detail: data.detail }));
-            }
-        });
-    }
-
-
-    window.addEventListener('windowInfoChanged', (e) => {
-        try {
-            const info = JSON.parse(e.detail);
-            updateWindowState(info);
-        } catch(err) {}
-    });
-
-    function updateWindowState(info) {
-        const maximizeBtn = document.querySelector('button[title^="Maximize"], button[title^="Restore"]');
-        if (maximizeBtn) {
-            const svg = maximizeBtn.querySelector('svg');
-            if (info.isMaximized) {
-                // Restore Icon (overlapping squares)
-                svg.innerHTML = '<path d="M4 8h12v12H4zM8 4h12v12h-2V6H8V4z" fill="currentColor"/>';
-                maximizeBtn.title = "Restore";
-            } else {
-                // Maximize Icon (single square)
-                svg.innerHTML = '<path d="M7 7h10v10H7z" fill="currentColor"/>';
-                maximizeBtn.title = "Maximize";
-            }
-        }
-    }
-
-    // Original Elements
-    const video = document.getElementById('video-layer');
-    const playIcon = document.getElementById('play-icon');
-    const npTitle = document.getElementById('np-title');
-    const npStatus = document.getElementById('np-status');
-    const timeCurrent = document.getElementById('time-current');
-    const timeTotal = document.getElementById('time-total');
-    const seekBar = document.getElementById('seek-bar');
-    const volBar = document.getElementById('vol-bar');
-    const dropOverlay = document.getElementById('drop-overlay');
-    const logoLayer = document.getElementById('logo-layer');
-    const logoImage = document.getElementById('logo-image');
-    const scanlines = document.getElementById('scanlines');
-    const contextMenu = document.getElementById('context-menu');
-    const fileInput = document.getElementById('file-input');
-    const speedSelect = document.getElementById('speed-select');
-    const statsOverlay = document.getElementById('stats-overlay');
-
-    let filters = {
-        brightness: 1,
-        invert: 0,
-        blur: 0,
-        contrast: 1,
-        flip: 1
-    };
-    let isLogoBounceAudio = false;
-    let audioCtx, analyser, dataArray;
-    let currentMediaUrl = null;
-    let currentSubUrl = null;
-    let statsVisible = false;
-    let statsFrameHandle = 0;
-    let lastStatsTime = 0;
-    let lastPresentedFrames = 0;
-    let estimatedFps = 0;
-
-    function postHostAction(action, extra = {}) {
-        try {
-            window.chrome.webview.postMessage(JSON.stringify({ action, ...extra }));
-        } catch(err) {}
-    }
-
-    function cleanupUrls() {
-        if (currentMediaUrl) {
-            URL.revokeObjectURL(currentMediaUrl);
-            currentMediaUrl = null;
-        }
-        if (currentSubUrl) {
-            URL.revokeObjectURL(currentSubUrl);
-            currentSubUrl = null;
-        }
-    }
-
-    // Ambilight Logic (Aggressively throttled to 10fps to prevent OOM)
-    const ambilightCanvas = document.getElementById('ambilight-canvas');
-    ambilightCanvas.width = 160;
-    ambilightCanvas.height = 90;
-    const ambilightCtx = ambilightCanvas.getContext('2d');
-    
-    setInterval(() => {
-        if (!video.paused && !video.ended && video.readyState >= 2) {
-            try {
-                ambilightCtx.drawImage(video, 0, 0, 160, 90);
-            } catch(e) {}
-        }
-    }, 100); // 100ms interval = 10fps
-
-    // Seek Tooltip Logic
-    const seekTooltip = document.getElementById('seek-tooltip');
-    seekBar.addEventListener('mousemove', (e) => {
-        if (!video.duration) return;
-        const rect = seekBar.getBoundingClientRect();
-        const pos = (e.clientX - rect.left) / rect.width;
-        const time = pos * video.duration;
-        seekTooltip.style.display = 'block';
-        seekTooltip.style.left = `${e.clientX - rect.left + 35}px`;
-        seekTooltip.innerText = formatTime(time);
-    });
-    seekBar.addEventListener('mouseleave', () => seekTooltip.style.display = 'none');
-
-    // Auto-Hide Controls & Titlebar Idle Logic
-    let idleTimeout;
-    function resetIdle() {
-        document.body.classList.remove('idle');
-        clearTimeout(idleTimeout);
-        idleTimeout = setTimeout(() => {
-            if (!video.paused && video.src) {
-                document.body.classList.add('idle');
-                document.body.style.cursor = 'none';
-            }
-        }, 5000); 
-    }
-
-    function awakenCore() {
-        document.body.style.cursor = 'default';
-        resetIdle();
-    }
-
-    document.addEventListener('mousemove', awakenCore);
-    document.addEventListener('keydown', (e) => {
-        awakenCore();
-        switch(e.key.toLowerCase()) {
-            case ' ': togglePlay(); break;
-            case 's': ctrlStop(); break;
-            case 'f': toggleFullscreen(); break;
-            case 'm': toggleMute(); break;
-            case 'i': toggleStatsOverlay(); break;
-            case 'o': fileInput.click(); break;
-            case '?': toggleHelp(); break;
-            case 'arrowright': video.currentTime += 5; break;
-            case 'arrowleft': video.currentTime -= 5; break;
-            case 'arrowup': video.volume = Math.min(1, video.volume + 0.1); volBar.value = video.volume * 100; break;
-            case 'arrowdown': video.volume = Math.max(0, video.volume - 0.1); volBar.value = video.volume * 100; break;
-        }
-    });
-
-    function toggleHelp() {
-        const help = document.getElementById('help-overlay');
-        help.style.display = help.style.display === 'flex' ? 'none' : 'flex';
-    }
-    document.addEventListener('mousedown', awakenCore);
-    video.addEventListener('play', awakenCore);
-    video.addEventListener('pause', () => {
-        document.body.classList.remove('idle');
-        document.body.style.cursor = 'default';
-    });
-
-    const SVG_PLAY = '<path d="M8 5v14l11-7z"/>';
-    const SVG_PAUSE = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
-
-    function setStatus(status) {
-        npStatus.innerText = status;
-    }
-
-    function showLogo(isAudio) {
-        if (isAudio) {
-            logoLayer.style.display = 'flex';
-            logoLayer.style.opacity = '1';
-            isLogoBounceAudio = true;
-        } else {
-            logoLayer.style.opacity = '0';
-            setTimeout(() => logoLayer.style.display = 'none', 500);
-            isLogoBounceAudio = false;
-        }
-    }
-
-    function setMediaTitle(title) {
-        npTitle.innerText = title;
-        document.title = title ? `${title} - HTorrentPlayer` : 'HTorrentPlayer';
-        postHostAction('setTitle', { title });
-    }
-
-    function loadMedia(file) {
-        if (!file) return;
-        cleanupUrls();
-        currentMediaUrl = URL.createObjectURL(file);
-        video.src = currentMediaUrl;
-        setMediaTitle(file.name);
-        dropOverlay.style.display = 'none';
-        showLogo(file.type.startsWith('audio'));
-
-        ctrlPlay();
-        initAudio();
-    }
-
-    // Network sources, including HTorrent's torrent streams (http://127.0.0.1:<port>/torrents/<id>/stream/<file>).
-    // The Web Audio graph is only attached to local files: cross-origin media routed through it plays silent.
-    function loadUrl(url, title) {
-        cleanupUrls();
-        video.src = url;
-        setMediaTitle(title || 'Network Stream');
-        dropOverlay.style.display = 'none';
-        showLogo(/\.(mp3|m4a|aac|flac|ogg|opus|wav)$/i.test(title || url));
-        setStatus("CONNECTING");
-        ctrlPlay();
-    }
-
-    function handleWindowDrag(e) {
-        if (e.button === 0) {
-            // Check if we are clicking on or inside an interactive element
-            const interactive = e.target.closest('button, input, a, .glass-panel, #context-menu, #controls-wrapper');
-            if (interactive) return;
-
-            postHostAction('dragMove');
-        }
-    }
-
-    function togglePlay() {
-        if(video.src) {
-            if(video.paused) ctrlPlay();
-            else ctrlPause();
-        }
-    }
-
-    // The play/pause icon and status follow the media events below, so a stream that is still
-    // buffering (or a play() the browser rejected) never shows as playing.
-    function ctrlPlay() {
-        if(video.src) {
-            video.play().catch(() => {});
-        }
-    }
-
-    function ctrlPause() {
-        if(video.src) {
-            video.pause();
-        }
-    }
-
-    function ctrlStop() {
-        if(video.src) {
-            video.pause();
-            video.currentTime = 0;
-            setStatus("STOPPED");
-        }
-    }
-
-    video.addEventListener('play', () => playIcon.innerHTML = SVG_PAUSE);
-    video.addEventListener('pause', () => {
-        playIcon.innerHTML = SVG_PLAY;
-        if (!video.ended && video.currentTime > 0) setStatus("PAUSED");
-    });
-    video.addEventListener('playing', () => setStatus("PLAYING"));
-    video.addEventListener('waiting', () => setStatus("BUFFERING"));
-    video.addEventListener('error', () => {
-        if (!video.getAttribute('src')) return;
-        const code = video.error ? video.error.code : 0;
-        playIcon.innerHTML = SVG_PLAY;
-        setStatus(code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED ? "FORMAT NOT SUPPORTED" : "STREAM ERROR");
-    });
-
-    function updateBuffered() {
-        let end = 0;
-        for (let i = 0; i < video.buffered.length; i++) {
-            if (video.buffered.start(i) <= video.currentTime + 0.5) end = Math.max(end, video.buffered.end(i));
-        }
-        const percent = video.duration ? Math.min(100, (end / video.duration) * 100) : 0;
-        seekBar.style.setProperty('--buffered', `${percent}%`);
-    }
-    video.addEventListener('progress', updateBuffered);
-
-
-
-    function toggleMaximize() {
-        postHostAction('maximize');
-    }
-
-    function toggleFullscreen() {
-        let target = document.documentElement;
-        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-            if (target.requestFullscreen) {
-                target.requestFullscreen().catch(e => {
-                    let videoElement = document.getElementById('video-layer');
-                    if (videoElement.requestFullscreen) videoElement.requestFullscreen();
-                });
-            }
-        } else {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            }
-        }
-    }
-
-    function handleFileSelect(e) {
-        if(e.target.files.length > 0) loadMedia(e.target.files[0]);
-        fileInput.value = "";
-    }
-
-    function handleSubSelect(e) {
-        if(e.target.files.length > 0) {
-            let file = e.target.files[0];
-            if (currentSubUrl) URL.revokeObjectURL(currentSubUrl);
-            currentSubUrl = URL.createObjectURL(file);
-
-            let track = document.createElement('track');
-            track.kind = 'captions';
-            track.label = 'Custom Subtitles';
-            track.srclang = 'en';
-            track.src = currentSubUrl;
-            track.default = true;
-
-            let existingTracks = video.querySelectorAll('track');
-            existingTracks.forEach(t => t.remove());
-
-            video.appendChild(track);
-            setStatus("SUBTITLES LOADED");
-        }
-        e.target.value = "";
-    }
-
-    // Aggressive Drag and Drop Handling to prevent default navigation
-    window.addEventListener('dragover', e => {
-        e.preventDefault();
-        e.stopPropagation();
-        if(!video.src) dropOverlay.style.display = 'flex';
-        dropOverlay.classList.add('active');
-    }, false);
-
-    window.addEventListener('dragleave', e => {
-        e.preventDefault();
-        e.stopPropagation();
-        dropOverlay.classList.remove('active');
-    }, false);
-
-    window.addEventListener('drop', e => {
-        e.preventDefault();
-        e.stopPropagation();
-        dropOverlay.classList.remove('active');
-        if(e.dataTransfer.files.length > 0) {
-            loadMedia(e.dataTransfer.files[0]);
-        }
-    }, false);
-
-    volBar.addEventListener('input', e => {
-        video.volume = e.target.value / 100;
-        video.muted = video.volume === 0;
-    });
-
-    let isSeeking = false;
-    seekBar.addEventListener('mousedown', () => isSeeking = true);
-    seekBar.addEventListener('mouseup', () => isSeeking = false);
-    seekBar.addEventListener('input', e => {
-        if(video.duration) {
-            video.currentTime = (e.target.value / 100) * video.duration;
-            timeCurrent.innerText = formatTime(video.currentTime);
-        }
-    });
-
-    video.addEventListener('timeupdate', () => {
-        if(!isSeeking && video.duration) {
-            seekBar.value = (video.currentTime / video.duration) * 100;
-            timeCurrent.innerText = formatTime(video.currentTime);
-        }
-        updateBuffered();
-    });
-
-    video.addEventListener('loadedmetadata', () => {
-        timeTotal.innerText = formatTime(video.duration);
-    });
-
-    video.addEventListener('ended', () => {
-        ctrlStop();
-    });
-
-    video.addEventListener('dblclick', toggleFullscreen);
-
-    function formatTime(s) {
-        if (isNaN(s)) return "00:00";
-        let h = Math.floor(s / 3600);
-        let m = Math.floor((s % 3600) / 60);
-        let sec = Math.floor(s % 60);
-
-        let minStr = m < 10 ? '0' + m : m;
-        let secStr = sec < 10 ? '0' + sec : sec;
-
-        if (h > 0) {
-            return `${h}:${minStr}:${secStr}`;
-        }
-        return `${minStr}:${secStr}`;
-    }
-
-    function openUrlPrompt() {
-        let url = prompt("Enter media URL:");
-        if (url) loadUrl(url);
-    }
-
-    function closeMedia() {
-        ctrlStop();
-        cleanupUrls();
-        video.removeAttribute('src');
-        video.load();
-        setMediaTitle('');
-        npTitle.innerText = "No media loaded";
-        timeCurrent.innerText = "00:00";
-        timeTotal.innerText = "00:00";
-        seekBar.value = 0;
-        seekBar.style.setProperty('--buffered', '0%');
-        dropOverlay.style.display = 'flex';
-        setStatus("WAITING FOR FILE");
-    }
-
-    function setPlaybackRate(rate) {
-        if (!Number.isFinite(rate) || rate <= 0) return;
-        video.playbackRate = rate;
-        video.defaultPlaybackRate = rate;
-        if (speedSelect) speedSelect.value = String(rate);
-        setStatus(`SPEED: ${rate}x`);
-    }
-
-    function toggleMute() {
-        video.muted = !video.muted;
-        volBar.value = video.muted ? 0 : (video.volume * 100 || 100);
-    }
-
-    function toggleLoop() {
-        video.loop = !video.loop;
-        setStatus(video.loop ? "LOOP: ON" : "LOOP: OFF");
-    }
-
-    function togglePiP() {
-        if (document.pictureInPictureElement) {
-            document.exitPictureInPicture().catch(() => {});
-        } else if (document.pictureInPictureEnabled && video.readyState >= 1) {
-            video.requestPictureInPicture().catch(() => {});
-        } else {
-            alert("Picture-in-Picture is not supported or no video is loaded.");
-        }
-    }
-
-    function readVideoStats() {
-        const quality = typeof video.getVideoPlaybackQuality === 'function'
-            ? video.getVideoPlaybackQuality()
-            : null;
-        const now = performance.now();
-        const presented = quality?.totalVideoFrames ?? 0;
-        if (lastStatsTime && presented >= lastPresentedFrames) {
-            estimatedFps = ((presented - lastPresentedFrames) * 1000) / (now - lastStatsTime);
-        }
-        lastStatsTime = now;
-        lastPresentedFrames = presented;
-
-        return {
-            width: video.videoWidth || 0,
-            height: video.videoHeight || 0,
-            fps: estimatedFps,
-            dropped: quality?.droppedVideoFrames ?? 0,
-            decoded: quality?.totalVideoFrames ?? 0,
-            rate: video.playbackRate || 1,
-            readyState: video.readyState
-        };
-    }
-
-    function updateStatsOverlay() {
-        if (!statsVisible) return;
-        const stats = readVideoStats();
-        let ahead = 0;
-        for (let i = 0; i < video.buffered.length; i++) {
-            if (video.buffered.start(i) <= video.currentTime && video.currentTime <= video.buffered.end(i)) ahead = video.buffered.end(i) - video.currentTime;
-        }
-        statsOverlay.innerHTML = [
-            `size: ${stats.width}x${stats.height}`,
-            `buffered ahead: ${ahead.toFixed(1)}s`,
-            `fps: ${stats.fps ? stats.fps.toFixed(1) : 'n/a'}`,
-            `dropped: ${stats.dropped}`,
-            `decoded: ${stats.decoded}`,
-            `rate: ${stats.rate}x`,
-            `ready: ${stats.readyState}`
-        ].join('<br>');
-        statsFrameHandle = requestAnimationFrame(updateStatsOverlay);
-    }
-
-    function toggleStatsOverlay() {
-        statsVisible = !statsVisible;
-        statsOverlay.style.display = statsVisible ? 'block' : 'none';
-        if (statsVisible) {
-            lastStatsTime = 0;
-            lastPresentedFrames = 0;
-            updateStatsOverlay();
-            setStatus("STATS: ON");
-        } else {
-            cancelAnimationFrame(statsFrameHandle);
-            setStatus("STATS: OFF");
-        }
-    }
-
-    function applyFilters() {
-        video.style.filter = `brightness(${filters.brightness}) invert(${filters.invert}) blur(${filters.blur}px) contrast(${filters.contrast})`;
-        video.style.transform = `scaleX(${filters.flip})`;
-    }
-
-    function adjustFilter(name, delta) {
-        filters[name] += delta;
-        applyFilters();
-    }
-
-    function toggleFilter(name) {
-        if (name === 'invert') filters.invert = filters.invert ? 0 : 1;
-        if (name === 'blur') filters.blur = filters.blur ? 5 : 0;
-        if (name === 'contrast') filters.contrast = filters.contrast === 1 ? 2 : 1;
-        if (name === 'flip') filters.flip *= -1;
-        applyFilters();
-    }
-
-    function toggleScanlines() {
-        scanlines.style.display = scanlines.style.display === 'block' ? 'none' : 'block';
-    }
-
-    function resetFilters() {
-        filters = { brightness: 1, invert: 0, blur: 0, contrast: 1, flip: 1 };
-        applyFilters();
-        scanlines.style.display = 'none';
-    }
-
-    function setAspect(mode) {
-        if (mode === 'contain' || mode === 'cover') {
-            video.style.objectFit = mode;
-            video.style.aspectRatio = 'auto';
-        } else {
-            video.style.objectFit = 'fill';
-            video.style.aspectRatio = mode;
-        }
-    }
-
-    async function initAudio() {
-        if (audioCtx) {
-            if (audioCtx.state === 'suspended') await audioCtx.resume();
-            return;
-        }
-        try {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            analyser = audioCtx.createAnalyser();
-            const source = audioCtx.createMediaElementSource(video);
-            source.connect(analyser);
-            analyser.connect(audioCtx.destination);
-            analyser.fftSize = 256;
-            dataArray = new Uint8Array(analyser.frequencyBinCount);
-            // animateBounce();
-        } catch(e) { console.log("Audio API error", e); }
-    }
-
-    function toggleLogoBounce() {
-        isLogoBounceAudio = !isLogoBounceAudio;
-        document.getElementById('mi-logo-bounce').style.fontWeight = isLogoBounceAudio ? 'bold' : 'normal';
-        if (!isLogoBounceAudio) logoImage.style.transform = 'scale(1)';
-    }
-
-    function animateBounce() {
-        requestAnimationFrame(animateBounce);
-        if (!isLogoBounceAudio || !analyser) return;
-        
-        analyser.getByteFrequencyData(dataArray);
-        let sum = 0;
-        for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-        let avg = sum / dataArray.length;
-        let scale = 1 + (avg / 256) * 0.2;
-        logoImage.style.transform = `scale(${scale})`;
-    }
-
-    // Fluid Custom Context Menu
-    const showMenu = (x, y) => {
-        contextMenu.style.display = 'block';
-        contextMenu.style.left = x + 'px';
-        contextMenu.style.top = y + 'px';
-
-        requestAnimationFrame(() => {
-            const menuRect = contextMenu.getBoundingClientRect();
-            let nx = x;
-            let ny = y;
-
-            if (x + menuRect.width > window.innerWidth) nx -= menuRect.width;
-            if (y + menuRect.height > window.innerHeight) ny -= menuRect.height;
-
-            contextMenu.style.left = Math.max(0, nx) + 'px';
-            contextMenu.style.top = Math.max(0, ny) + 'px';
-        });
-    };
-
-    window.addEventListener('contextmenu', e => {
-        e.preventDefault();
-        showMenu(e.clientX, e.clientY);
-    });
-
-    document.addEventListener('mousedown', e => {
-        // Hide menu if clicking outside
-        if (contextMenu.style.display === 'block' && !contextMenu.contains(e.target)) {
-            contextMenu.style.display = 'none';
-        }
-    });
-
-    document.addEventListener('scroll', () => {
-        contextMenu.style.display = 'none';
-    }); // For robustness
-
-    window.addEventListener('beforeunload', cleanupUrls);
-
-    // Initialize. HTorrent opens the player with index.html?src=<stream url>&title=<file name>.
-    document.addEventListener('DOMContentLoaded', () => {
-        awakenCore();
-
-        const params = new URLSearchParams(location.search);
-        const src = params.get('src');
-        if (src) loadUrl(src, params.get('title'));
-    });
-</script>
+<input type="file" id="fileInput" style="display:none" accept="video/*,audio/*,.mkv">
+<input type="file" id="subInput" style="display:none" accept=".vtt,.srt">
+
+<script src="js/utils.js"></script>
+<script src="js/state.js"></script>
+<script src="js/osd.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/player.js"></script>
+<script src="js/timeline.js"></script>
+<script src="js/menu.js"></script>
+<script src="js/hotkeys.js"></script>
+<script src="js/main.js"></script>
 </body>
 </html>

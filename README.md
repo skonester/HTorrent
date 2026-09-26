@@ -28,7 +28,9 @@ Get the latest `HTorrent-Setup-<version>.exe` from the [Releases page](https://g
 2. Click **Stream** next to a video or audio file.
 3. HTorrentPlayer opens and starts playing. HTorrent downloads the part you are watching first; the player shows **BUFFERING** while it waits for data and **PLAYING** once it has enough.
 
-You can seek anywhere in the video; HTorrent fetches that part next. HTorrentPlayer supports fullscreen, playback speed, picture-in-picture, and video filters (right-click the video), plus keyboard shortcuts (press `?`). It closes when HTorrent closes. If the player can't start, the stream opens in your web browser instead.
+You can seek anywhere in the video; HTorrent fetches that part next. The seek bar shows how much has arrived, and pressing the arrow keys several times adds up into one jump (for example +15s), so HTorrent re-prioritizes pieces once instead of on every press. HTorrentPlayer remembers where you stopped each video and resumes from there.
+
+Right-click the video (or click **⋮** on the control bar) for playback speed, loop, aspect ratio, brightness and other video adjustments, fullscreen, picture-in-picture, playback stats and the ambilight glow. Scroll over the volume or speed control to change it. The settings button changes the accent color, the control bar's look and when it hides. Press `?` for keyboard shortcuts. The player closes when HTorrent closes. If it can't start, the stream opens in your web browser instead.
 
 What plays depends on the formats WebView2 supports. MP4 (H.264/AAC) and WebM work best; for other formats the player shows **FORMAT NOT SUPPORTED**.
 
@@ -79,5 +81,6 @@ HTorrent includes code adapted from these projects, used under their own license
 - Search is a Kotlin/JVM adaptation of [TorrentSearch-Kotlin](https://github.com/DrewCarlson/TorrentSearch-Kotlin) by Andrew Carlson (MIT). See `TORRENTSEARCH-NOTICE.md`.
 - HTML parsing uses [jsoup](https://jsoup.org/) (MIT).
 - HTorrentPlayer is built on [InfiniFrame](https://github.com/InfiniLore/InfiniFrame) (Apache-2.0).
+- HTorrentPlayer's interface is adapted from [Perdanga VSP](https://gitlab.com/perdanga/perdanga-vsp) by PerdangaSoftware (MIT).
 
 The license texts are in `HTorrent/HTorrentCompose/licenses` and are installed with the app.
