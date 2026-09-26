@@ -75,7 +75,7 @@ fun main() {
         var searchRaise by remember { mutableStateOf(0) }
         Window(
             onCloseRequest = ::exitApplication,
-            title = "HTorrent v1.0.0",
+            title = "HTorrent v1.0.1",
             icon = appIcon,
             state = rememberWindowState(width = 984.dp, height = 521.dp)
         ) {
