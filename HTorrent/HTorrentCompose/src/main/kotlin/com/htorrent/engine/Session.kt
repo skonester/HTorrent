@@ -19,6 +19,8 @@ class Session(val stateDirectory: Path, listenPort: Int = 0, private val enableD
     val dht = if (enableDiscovery) Dht(stateDirectory) else null
     internal val transfers = daemonPool("htorrent-peer", 64)
     internal val discovery = daemonPool("htorrent-discovery", 8)
+    // Checking existing files may take a long time; keep it off the workers that find peers.
+    internal val initialization = daemonPool("htorrent-initialize", 4)
     internal val scheduler = daemonScheduler("htorrent-session", 2)
     private val acceptor = daemonPool("htorrent-listen", 1)
     private val torrents = ConcurrentHashMap<String, ManagedTorrent>()
@@ -84,7 +86,7 @@ class Session(val stateDirectory: Path, listenPort: Int = 0, private val enableD
                 "files" to (it.onlyFiles?.sorted() ?: listOf(-1)))
         }))
     }
-    fun restore() {
+    fun restore(startRunning: Boolean = true) {
         val file = stateDirectory.resolve("session.bencode")
         if (!Files.exists(file)) return
         val entries = (Bencode.decode(Files.readAllBytes(file)) as BValue.ListValue).value
@@ -102,7 +104,8 @@ class Session(val stateDirectory: Path, listenPort: Int = 0, private val enableD
             val torrent = ManagedTorrent(this, hash, row.text("name") ?: hash.hex(), meta?.trackerTiers ?: parsed?.trackers.orEmpty().map { listOf(it) },
                 Path.of(row.text("output") ?: error("Missing output folder")), magnet, meta, files)
             torrents.putIfAbsent(hash.hex(), torrent)
-            if (row.long("running") == 1L) torrent.start()
+            if (row.long("running") == 1L && startRunning) torrent.start()
+            else if (row.text("status") == TorrentStatus.STOPPED.name) torrent.pause(stopped = true, persist = false)
         }
     }
     override fun close() {
@@ -112,7 +115,7 @@ class Session(val stateDirectory: Path, listenPort: Int = 0, private val enableD
         listener.close(); handshakes.forEach { runCatching { it.close() } }
         torrents.values.forEach { it.pause(persist = false) }
         localDiscovery?.close(); portMapping?.close(); dht?.close()
-        scheduler.shutdownNow(); transfers.shutdownNow(); discovery.shutdownNow(); acceptor.shutdownNow()
+        scheduler.shutdownNow(); transfers.shutdownNow(); discovery.shutdownNow(); initialization.shutdownNow(); acceptor.shutdownNow()
     }
 }
 
@@ -152,7 +155,7 @@ class ManagedTorrent internal constructor(
         val epoch = generation.incrementAndGet()
         lastDht = 0; trackerNext.clear(); trackerStarted.clear(); trackerCompleted.clear()
         status = if (metadata == null) TorrentStatus.METADATA else TorrentStatus.INITIALIZING
-        session.discovery.execute {
+        session.initialization.execute {
             try { if (pieces != null) refreshStatus() else metadata?.let { initialize(it, epoch) } }
             catch (e: Exception) { fail(e, epoch) }
         }
@@ -166,6 +169,15 @@ class ManagedTorrent internal constructor(
         status = if (stopped) TorrentStatus.STOPPED else TorrentStatus.PAUSED
         trackerStarted.toList().forEach { url -> session.discovery.execute { runCatching { Trackers.announce(url, announce("stopped")) } } }
         if (persist) checkpoint()
+    }
+    @Synchronized fun recheck() {
+        require(metadata != null) { "Torrent metadata is not available yet" }
+        pause(persist = false)
+        pieces = null
+        storage = null
+        Files.deleteIfExists(session.stateDirectory.resolve("$id.resume"))
+        start()
+        session.save()
     }
     internal fun fail(e: Exception, epoch: Long = generation.get()) {
         synchronized(this) {

@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.htorrent"
-version = "1.0.1"
+version = "1.0.2"
 
 dependencies {
     implementation(compose.desktop.currentOs)
@@ -21,7 +21,7 @@ compose.desktop {
             modules("jdk.httpserver", "java.xml", "jdk.crypto.ec", "java.net.http")
             // No targetFormats — we use createDistributable, not an installer
             packageName = "HTorrent"
-            packageVersion = "1.0.1"
+            packageVersion = "1.0.2"
             description = "HTorrent - Torrent Client by Skonester"
             vendor = "Skonester"
             copyright = "Copyright © 2026 Skonester"
@@ -98,6 +98,7 @@ val packageApp by tasks.registering(Sync::class) {
     from("../../LICENSE") { rename { "LICENSE.txt" } }
     from("RQBIT-NOTICE.md")
     from("TORRENTSEARCH-NOTICE.md")
+    from("HALITE-NOTICE.md")
     from("licenses") { into("licenses") }
 
     into(distDir)

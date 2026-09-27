@@ -41,6 +41,7 @@ module PlayerWindow =
                     "height", box window.Height
                     "isMaximized", box window.Maximized
                     "isMinimized", box window.Minimized
+                    "isFullScreen", box window.FullScreen
                     "isFocused", box window.Focused
                     "isDarkMode", box isDarkMode
                 ] |> JsonSerializer.Serialize
@@ -106,6 +107,11 @@ module PlayerWindow =
                 | Some "restore" ->
                     window.SetMaximized(false) |> ignore
                     window.SetMinimized(false) |> ignore
+                    dispatchWindowEvent window "windowInfoChanged"
+                // WebView2 leaves the HTML Fullscreen API to the host, so the page asks the window instead.
+                | Some "setFullScreen" ->
+                    use data = JsonDocument.Parse(message)
+                    window.SetFullScreen(data.RootElement.GetProperty("on").GetBoolean()) |> ignore
                     dispatchWindowEvent window "windowInfoChanged"
                 | Some "dragMove" -> ()
                 | Some "setTitle" ->

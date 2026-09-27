@@ -27,6 +27,15 @@
     let lastStatsTime = 0;
     let lastStatsFrames = 0;
     let estimatedFps = 0;
+    let hostFullscreen = false;
+
+    function applyFullscreen(on) {
+        hostFullscreen = on;
+        document.body.classList.toggle('fullscreen', on);
+        El.fsEnterIcon.style.display = on ? 'none' : 'block';
+        El.fsExitIcon.style.display = on ? 'block' : 'none';
+        App.Timeline.updateRect();
+    }
 
     const ambilightCtx = El.ambilight.getContext('2d');
 
@@ -222,10 +231,14 @@
 
         // ---------------------------------------------------------------- window
 
-        isFullscreen: () => !!document.fullscreenElement,
+        isFullscreen: () => hostFullscreen || !!document.fullscreenElement,
 
+        // WebView2 does not resize the window for requestFullscreen(), so PlayerWindow.fs does it.
+        // The HTML Fullscreen API is only the fallback when testing in a browser.
         toggleFullscreen() {
-            if (document.fullscreenElement) {
+            if (Utils.postHostAction('setFullScreen', { on: !hostFullscreen })) {
+                applyFullscreen(!hostFullscreen);
+            } else if (document.fullscreenElement) {
                 document.exitFullscreen().catch(() => {});
             } else {
                 document.documentElement.requestFullscreen().catch(() => App.OSD.show('FULLSCREEN', 'Not available right now'));
@@ -510,13 +523,19 @@
             video.addEventListener('enterpictureinpicture', () => El.pipBtn.classList.add('active'));
             video.addEventListener('leavepictureinpicture', () => El.pipBtn.classList.remove('active'));
 
-            document.addEventListener('fullscreenchange', () => {
-                const on = !!document.fullscreenElement;
-                document.body.classList.toggle('fullscreen', on);
-                El.fsEnterIcon.style.display = on ? 'none' : 'block';
-                El.fsExitIcon.style.display = on ? 'block' : 'none';
-                App.Timeline.updateRect();
-            });
+            document.addEventListener('fullscreenchange', () => applyFullscreen(!!document.fullscreenElement));
+
+            // Keep in step with the real window state (PlayerWindow.fs sends it after every resize).
+            if (window.chrome && window.chrome.webview) {
+                window.chrome.webview.addEventListener('message', e => {
+                    try {
+                        const msg = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+                        if (msg.type !== 'windowInfoChanged') return;
+                        const info = typeof msg.detail === 'string' ? JSON.parse(msg.detail) : msg.detail;
+                        if (typeof info.isFullScreen === 'boolean' && info.isFullScreen !== hostFullscreen) applyFullscreen(info.isFullScreen);
+                    } catch (err) { /* not a window event */ }
+                });
+            }
 
             // Ambilight, throttled to 10 fps
             setInterval(() => {

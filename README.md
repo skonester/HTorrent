@@ -10,21 +10,25 @@ HTorrent is a modern, lightweight BitTorrent client for Windows by Skonester, in
 
 Get the latest `HTorrent-Setup-<version>.exe` from the [Releases page](https://github.com/skonester/HTorrent/releases/latest) and run it. It installs HTorrent with Start menu and optional desktop shortcuts, and it can be removed from **Settings → Apps**.
 
+The installer can also register HTorrent as an available handler for `.torrent` files and magnet links. Windows keeps your current defaults; choose HTorrent in **Default apps** if you want those links to open here. Launches from Explorer go to the running HTorrent window.
+
 **Requirements:** 64-bit Windows 10 or 11. HTorrentPlayer uses the Microsoft Edge WebView2 Runtime, which comes with Windows 11 and most up-to-date Windows 10 PCs. If the player reports that it is missing, install it from [Microsoft](https://developer.microsoft.com/microsoft-edge/webview2/).
 
 ## Features
 
 - **Torrents and magnet links:** add `.torrent` files or paste magnet links, then start, pause, stop and remove them.
+- **Torrent controls:** select a torrent to use the toolbar, double-click for its files, or right-click for actions including **Recheck Files**. The **All Torrents** menu makes bulk controls explicit. Removing a torrent keeps its downloaded files.
+- **Torrent details:** the lower pane shows Overview, Files, Trackers, and Peers. Choose files and start streams directly from the Files tab.
 - **Peer discovery:** finds peers through trackers, DHT, and local network discovery.
 - **Choose files:** download only the files you want from a torrent.
-- **Speed limits:** cap download and upload speed in KiB/s.
+- **Settings:** save the download folder and global speed limits, and choose whether new or restored torrents start automatically.
 - **Resume:** your torrents come back when you reopen HTorrent, without re-checking files that haven't changed.
 - **Search:** searches PirateBay, YTS, EZTV, Nyaa and 1337x at once, and downloads a result with one click.
 - **Streaming:** watch a video before the download finishes (see below).
 
 ## Streaming with HTorrentPlayer
 
-1. Click a torrent in the list. Its file list opens.
+1. Double-click a torrent in the list, or select it and click **Files**. Its Files tab opens.
 2. Click **Stream** next to a video or audio file.
 3. HTorrentPlayer opens and starts playing. HTorrent downloads the part you are watching first; the player shows **BUFFERING** while it waits for data and **PLAYING** once it has enough.
 
@@ -36,7 +40,9 @@ What plays depends on the formats WebView2 supports. MP4 (H.264/AAC) and WebM wo
 
 ## Where things are stored
 
-- **Downloads:** `Downloads\HTorrent` in your user folder. Change it with **Change Path**.
+- **Downloads:** `Downloads\HTorrent` in your user folder. Change it from **Settings → Change Download Folder**.
+- **Settings:** `.htorrent\settings.properties` in your user folder.
+- **Error log:** `.htorrent\logs\htorrent-errors.log` in your user folder, created if a startup or background error occurs.
 - **Torrent list and resume data:** `.htorrent\session` in your user folder.
 - **Player data:** `%LOCALAPPDATA%\HTorrent\HTorrentPlayer`.
 
@@ -79,6 +85,7 @@ HTorrent includes code adapted from these projects, used under their own license
 
 - The torrent engine is a Kotlin adaptation of [rqbit](https://github.com/ikatson/rqbit) by Igor Katson (Apache-2.0). See `RQBIT-NOTICE.md`.
 - Search is a Kotlin/JVM adaptation of [TorrentSearch-Kotlin](https://github.com/DrewCarlson/TorrentSearch-Kotlin) by Andrew Carlson (MIT). See `TORRENTSEARCH-NOTICE.md`.
+- The toolbar uses the original bitmap strip from [Halite](https://github.com/Eoinocal/Halite). See `HALITE-NOTICE.md` and `licenses/Halite-LICENSE.txt`.
 - HTML parsing uses [jsoup](https://jsoup.org/) (MIT).
 - HTorrentPlayer is built on [InfiniFrame](https://github.com/InfiniLore/InfiniFrame) (Apache-2.0).
 - HTorrentPlayer's interface is adapted from [Perdanga VSP](https://gitlab.com/perdanga/perdanga-vsp) by PerdangaSoftware (MIT).

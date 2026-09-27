@@ -1,5 +1,5 @@
 ; HTorrent Windows installer (NSIS 3). Built by `gradlew packageInstaller`, which passes:
-;   /DVERSION=1.0.0  /DSOURCE_DIR=<build/dist/HTorrent>  /DOUT_FILE=<setup exe path>
+;   /DVERSION=1.0.2  /DSOURCE_DIR=<build/dist/HTorrent>  /DOUT_FILE=<setup exe path>
 ; Installs the packageApp layout (HTorrent.exe launcher + runtime/) per machine.
 
 Unicode true
@@ -19,6 +19,7 @@ SetCompressor /SOLID lzma
 !define APP_NAME "HTorrent"
 !define PUBLISHER "Skonester"
 !define UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}"
+!define CAPABILITIES_KEY "Software\${APP_NAME}\Capabilities"
 
 !include "MUI2.nsh"
 !include "x64.nsh"
@@ -129,6 +130,25 @@ Section "Desktop shortcut" SecDesktop
   CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\HTorrent.exe" "" "$INSTDIR\HTorrent.exe" 0
 SectionEnd
 
+; Register as an available handler without taking over the user's existing defaults.
+Section /o "Open .torrent files and magnet links" SecAssociations
+  WriteRegStr HKLM "Software\Classes\HTorrent.torrent" "" "BitTorrent torrent file"
+  WriteRegStr HKLM "Software\Classes\HTorrent.torrent\DefaultIcon" "" '"$INSTDIR\HTorrent.exe",0'
+  WriteRegStr HKLM "Software\Classes\HTorrent.torrent\shell\open\command" "" '"$INSTDIR\HTorrent.exe" "%1"'
+  WriteRegStr HKLM "Software\Classes\.torrent\OpenWithProgids" "HTorrent.torrent" ""
+
+  WriteRegStr HKLM "Software\Classes\HTorrent.magnet" "" "URL:Magnet Link"
+  WriteRegStr HKLM "Software\Classes\HTorrent.magnet" "URL Protocol" ""
+  WriteRegStr HKLM "Software\Classes\HTorrent.magnet\DefaultIcon" "" '"$INSTDIR\HTorrent.exe",0'
+  WriteRegStr HKLM "Software\Classes\HTorrent.magnet\shell\open\command" "" '"$INSTDIR\HTorrent.exe" "%1"'
+
+  WriteRegStr HKLM "${CAPABILITIES_KEY}" "ApplicationName" "${APP_NAME}"
+  WriteRegStr HKLM "${CAPABILITIES_KEY}" "ApplicationDescription" "HTorrent BitTorrent client"
+  WriteRegStr HKLM "${CAPABILITIES_KEY}\FileAssociations" ".torrent" "HTorrent.torrent"
+  WriteRegStr HKLM "${CAPABILITIES_KEY}\UrlAssociations" "magnet" "HTorrent.magnet"
+  WriteRegStr HKLM "Software\RegisteredApplications" "${APP_NAME}" "${CAPABILITIES_KEY}"
+SectionEnd
+
 ; Removes only what the installer put down. Downloads and ~\.htorrent session data are left alone.
 Section "Uninstall"
   !insertmacro WaitForAppExit
@@ -143,8 +163,14 @@ Section "Uninstall"
   Delete "$INSTDIR\LICENSE.txt"
   Delete "$INSTDIR\RQBIT-NOTICE.md"
   Delete "$INSTDIR\TORRENTSEARCH-NOTICE.md"
+  Delete "$INSTDIR\HALITE-NOTICE.md"
   Delete "$INSTDIR\Uninstall.exe"
   RMDir "$INSTDIR"
 
   DeleteRegKey HKLM "${UNINSTALL_KEY}"
+  DeleteRegValue HKLM "Software\RegisteredApplications" "${APP_NAME}"
+  DeleteRegKey HKLM "${CAPABILITIES_KEY}"
+  DeleteRegKey HKLM "Software\Classes\HTorrent.torrent"
+  DeleteRegKey HKLM "Software\Classes\HTorrent.magnet"
+  DeleteRegValue HKLM "Software\Classes\.torrent\OpenWithProgids" "HTorrent.torrent"
 SectionEnd

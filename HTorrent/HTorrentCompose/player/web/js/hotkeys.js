@@ -7,7 +7,7 @@
     window.addEventListener('keydown', e => {
         if (e.code === 'Escape') {
             if (App.Menu.isOpen()) App.Menu.close();
-            else if (!App.Dialogs.closeAll() && document.fullscreenElement) App.Player.toggleFullscreen();
+            else if (!App.Dialogs.closeAll() && App.Player.isFullscreen()) App.Player.toggleFullscreen();
             return;
         }
         // Dialogs keep their keys (typing a URL, arrow keys on sliders).

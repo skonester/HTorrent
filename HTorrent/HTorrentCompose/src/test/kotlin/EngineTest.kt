@@ -146,6 +146,62 @@ class EngineTest {
             }
         }
     }
+    @Test fun `stopping one torrent leaves others running and survives restart`() {
+        val state = Files.createTempDirectory("htorrent-individual-state")
+        val output = Files.createTempDirectory("htorrent-individual-output")
+        Session(state, enableDiscovery = false).use { session ->
+            val first = session.addTorrent(torrent(byteArrayOf(1), "first.bin"), output)
+            val second = session.addTorrent(torrent(byteArrayOf(2), "second.bin"), output)
+            await { first.status == TorrentStatus.DOWNLOADING && second.status == TorrentStatus.DOWNLOADING }
+            first.pause(stopped = true)
+            session.save()
+            assertEquals(TorrentStatus.STOPPED, first.status)
+            assertEquals(TorrentStatus.DOWNLOADING, second.status)
+        }
+        Session(state, enableDiscovery = false).use { restored ->
+            restored.restore()
+            await { restored.snapshots().any { it.name == "second.bin" && it.status == TorrentStatus.DOWNLOADING } }
+            assertEquals(TorrentStatus.STOPPED, restored.snapshots().single { it.name == "first.bin" }.status)
+        }
+    }
+    @Test fun `a new torrent initializes while discovery workers are busy`() {
+        val busy = java.util.concurrent.CountDownLatch(8)
+        val release = java.util.concurrent.CountDownLatch(1)
+        Session(Files.createTempDirectory("htorrent-busy-discovery"), enableDiscovery = false).use { session ->
+            try {
+                repeat(8) { session.discovery.execute { busy.countDown(); release.await() } }
+                assertTrue(busy.await(3, TimeUnit.SECONDS))
+                val added = session.addTorrent(torrent(byteArrayOf(3), "waiting.bin"), Files.createTempDirectory("htorrent-busy-output"))
+                await(3) { added.status == TorrentStatus.DOWNLOADING }
+            } finally {
+                release.countDown()
+            }
+        }
+    }
+    @Test fun `recheck detects changed files`() {
+        val data = randomBytes(1024)
+        val output = Files.createTempDirectory("htorrent-recheck-output")
+        Files.write(output.resolve("payload.bin"), data)
+        Session(Files.createTempDirectory("htorrent-recheck-state"), enableDiscovery = false).use { session ->
+            val managed = session.addTorrent(torrent(data), output)
+            await { managed.status == TorrentStatus.SEEDING }
+            managed.pause()
+            Files.write(output.resolve("payload.bin"), ByteArray(data.size))
+            managed.recheck()
+            await { managed.status == TorrentStatus.DOWNLOADING && managed.snapshot().progress == 0.0 }
+        }
+    }
+    @Test fun `resume on launch can be disabled`() {
+        val state = Files.createTempDirectory("htorrent-no-resume")
+        Session(state, enableDiscovery = false).use { session ->
+            val managed = session.addTorrent(torrent(byteArrayOf(1)), Files.createTempDirectory("htorrent-no-resume-output"))
+            await { managed.status == TorrentStatus.DOWNLOADING }
+        }
+        Session(state, enableDiscovery = false).use { session ->
+            session.restore(startRunning = false)
+            assertEquals(TorrentStatus.PAUSED, session.snapshots().single().status)
+        }
+    }
     @Test fun `private torrents refuse peers from DHT PEX and LAN discovery`() {
         val info = mapOf("name" to "private.bin", "length" to 1, "piece length" to 16384, "pieces" to sha1(byteArrayOf(1)), "private" to 1)
         Session(Files.createTempDirectory("htorrent-private-state"), enableDiscovery = false).use { session ->
