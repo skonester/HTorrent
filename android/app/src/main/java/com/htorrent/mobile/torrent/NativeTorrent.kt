@@ -21,7 +21,8 @@ class TorrentSession(stateDir: File, dht: Boolean = true) : AutoCloseable {
     init {
         if (!NativeTorrent.available) throw IOException("This build doesn't include the torrent engine.")
         stateDir.mkdirs()
-        val config = JSONObject().put("state_dir", stateDir.absolutePath).put("dht", dht)
+        // The engine refuses paths containing symbolic links, and Android's own app folder (/data/user/0) is one.
+        val config = JSONObject().put("state_dir", stateDir.canonicalPath).put("dht", dht)
         handle = NativeTorrent.create(config.toString().toByteArray())
         if (handle == 0L) {
             val why = NativeTorrent.call(0, "{}".toByteArray())?.let { runCatching { JSONObject(String(it)).optString("error") }.getOrNull() }

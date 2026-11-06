@@ -140,7 +140,7 @@ class TorrentJob(
             folder.mkdirs()
             engine = TorrentSession(stateDir)
             engine.call(JSONObject().put("action", "add").put("id", "payload").put("preview", false).put("source", info.source)
-                .put("metainfo", info.metainfo).put("destination", folder.absolutePath).put("priorities", JSONArray(info.priorities))
+                .put("metainfo", info.metainfo).put("destination", folder.canonicalPath).put("priorities", JSONArray(info.priorities))
                 .put("trackers", JSONArray(info.trackers)).put("seed", false).put("upload_limit", 0)
                 .put("download_limit", downloadLimitKB * 1024).put("max_connections", 50).put("max_uploads", 4))
             var snap = engine.call(JSONObject().put("action", "resume").put("id", "payload"))
