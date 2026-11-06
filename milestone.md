@@ -74,3 +74,18 @@ Many MKV files (and some MP4s) carry subtitles inside the video file. WebView2 d
 - [ ] Same test while the torrent is still downloading: the video starts right away and the subtitles appear once they arrive.
 - [ ] A torrent with no subtitles behaves exactly as it does today.
 - [ ] README updated: add subtitles to the HTorrentPlayer feature list.
+
+# Milestone: Version 1.0.3
+
+## Test magnet links on Android
+
+Tapping a magnet link in the Android app's built-in browser got stuck on "Finding the torrent's files". We think our VPN was blocking the connection, but we haven't confirmed that. Test this before releasing 1.0.3.
+
+While it searches, the Add Torrent window shows a status line such as `Peers: 3 · Trackers answering: 1 of 2`. Note what it says for each test.
+
+- [ ] A magnet link on Wi-Fi with the VPN off finds the torrent's files.
+- [ ] A magnet link on mobile data with the VPN off finds the torrent's files.
+- [ ] A magnet link with the VPN on: record whether it works and what the status line says.
+- [ ] A magnet link that has no trackers (`magnet:?xt=urn:btih:<hash>` only) finds its files through DHT.
+- [ ] A magnet link and a `.torrent` link both download to the end, and the files appear in `Download/HTorrent`.
+- [ ] If a VPN does block lookups, decide whether the app should say so instead of waiting out the 100-second limit.

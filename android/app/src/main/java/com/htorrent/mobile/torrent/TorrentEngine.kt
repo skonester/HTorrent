@@ -29,8 +29,27 @@ object TorrentPreview {
         isTorrent(url) || fileName?.trim()?.endsWith(".torrent", ignoreCase = true) == true ||
             mime?.substringBefore(';')?.trim().equals("application/x-bittorrent", ignoreCase = true)
 
-    /** The torrent's name and files; never downloads its content. [cancelled] stops a slow magnet lookup. */
-    fun load(context: Context, source: String, cancelled: () -> Boolean = { false }): TorrentInfo {
+    /**
+     * The trackers the engine can use. It refuses a whole list containing anything else, and many torrents also list
+     * WebTorrent (wss://) trackers, so those are left out instead of failing the download.
+     */
+    fun usableTrackers(trackers: List<String>): List<String> =
+        trackers.filter { (it.startsWith("https://") || it.startsWith("http://") || it.startsWith("udp://")) && it.length <= 4096 }.take(128)
+
+    /** Peers and trackers so far, so a slow lookup shows what it's waiting for. */
+    private fun lookupStatus(snap: JSONObject): String {
+        val listed = snap.optJSONArray("tracker_status") ?: JSONArray()
+        val trackers = (0 until listed.length()).map { listed.getJSONObject(it) }.filter { usableTrackers(listOf(it.optString("url"))).isNotEmpty() }
+        val problem = trackers.firstNotNullOfOrNull { it.optString("message").ifEmpty { null } }
+        return "Peers: ${snap.optInt("peers")} · Trackers answering: ${trackers.count { it.optBoolean("working") }} of ${trackers.size}" +
+            if (problem != null) " · $problem" else ""
+    }
+
+    /**
+     * The torrent's name and files; never downloads its content. [cancelled] stops a slow magnet lookup, and
+     * [onStatus] reports how the lookup is going.
+     */
+    fun load(context: Context, source: String, cancelled: () -> Boolean = { false }, onStatus: (String) -> Unit = {}): TorrentInfo {
         val s = source.trim()
         val magnet = s.startsWith("magnet:?", ignoreCase = true)
         val metainfo = if (magnet) "" else Base64.encodeToString(read(context, s), Base64.NO_WRAP)
@@ -43,9 +62,10 @@ object TorrentPreview {
                 while (snap.optString("state") != "preview") {
                     if (cancelled()) throw IOException("Cancelled.")
                     if (snap.optString("state") == "failed") throw IOException(snap.optString("error"))
-                    if (System.currentTimeMillis() > deadline) throw IOException("Couldn't find the torrent's files. Check the link or try again later.")
+                    if (System.currentTimeMillis() > deadline) throw IOException("Couldn't find the torrent's files. Check the link or try again later. (${lookupStatus(snap)})")
                     Thread.sleep(250)
                     snap = engine.call(JSONObject().put("action", "status").put("id", "preview"))
+                    onStatus(lookupStatus(snap))
                 }
                 return TorrentInfo.fromSnapshot(if (magnet) s else "", snap)
             }
@@ -141,7 +161,7 @@ class TorrentJob(
             engine = TorrentSession(stateDir)
             engine.call(JSONObject().put("action", "add").put("id", "payload").put("preview", false).put("source", info.source)
                 .put("metainfo", info.metainfo).put("destination", folder.canonicalPath).put("priorities", JSONArray(info.priorities))
-                .put("trackers", JSONArray(info.trackers)).put("seed", false).put("upload_limit", 0)
+                .put("trackers", JSONArray(TorrentPreview.usableTrackers(info.trackers))).put("seed", false).put("upload_limit", 0)
                 .put("download_limit", downloadLimitKB * 1024).put("max_connections", 50).put("max_uploads", 4))
             var snap = engine.call(JSONObject().put("action", "resume").put("id", "payload"))
             while (!stopped) {

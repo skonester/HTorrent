@@ -53,6 +53,7 @@ fun TorrentSheet(source: String, onDone: (String?) -> Unit) {
     var info by remember { mutableStateOf<TorrentInfo?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
+    var lookup by remember { mutableStateOf("") }
     val chosen = remember { mutableStateListOf<Boolean>() }
     var cancelled by remember { mutableStateOf(false) }
 
@@ -60,8 +61,9 @@ fun TorrentSheet(source: String, onDone: (String?) -> Unit) {
         if (!enabled || info != null || loading || !NativeTorrent.available) return@LaunchedEffect
         loading = true; error = null
         Thread({
-            val result = runCatching { TorrentPreview.load(context, source) { cancelled } }
-            android.os.Handler(android.os.Looper.getMainLooper()).post {
+            val main = android.os.Handler(android.os.Looper.getMainLooper())
+            val result = runCatching { TorrentPreview.load(context, source, { cancelled }) { text -> main.post { lookup = text } } }
+            main.post {
                 loading = false
                 result.onSuccess { found ->
                     info = found; chosen.clear(); chosen.addAll(found.files.map { !it.pad })
@@ -95,7 +97,11 @@ fun TorrentSheet(source: String, onDone: (String?) -> Unit) {
                 !NativeTorrent.available -> Text(tr("This version of the app doesn't include the torrent engine."), color = MaterialTheme.colorScheme.error)
                 !enabled -> Text(tr("Turn on torrents to see this torrent's files."), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 loading -> Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(Modifier.padding(4.dp)); Spacer(Modifier.width(8.dp)); Text(tr("Finding the torrent's files…"))
+                    CircularProgressIndicator(Modifier.padding(4.dp)); Spacer(Modifier.width(8.dp))
+                    Column {
+                        Text(tr("Finding the torrent's files…"))
+                        if (lookup.isNotEmpty()) Text(lookup, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
             info?.let { found ->

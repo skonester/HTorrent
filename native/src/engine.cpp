@@ -236,6 +236,8 @@ struct Engine {
         lt::settings_pack settings;
         settings.set_str(lt::settings_pack::listen_interfaces, config.value("listen", "0.0.0.0:0,[::]:0"));
         settings.set_bool(lt::settings_pack::enable_dht, config.value("dht", true));
+        // Every magnet lookup starts a new session with an empty DHT table, so one bootstrap router isn't enough.
+        settings.set_str(lt::settings_pack::dht_bootstrap_nodes, "dht.libtorrent.org:25401,router.bittorrent.com:6881,router.utorrent.com:6881,dht.transmissionbt.com:6881");
         settings.set_bool(lt::settings_pack::enable_lsd, false);
         // Port forwarding on the router (UPnP and NAT-PMP) is off unless the user turns it on.
         settings.set_bool(lt::settings_pack::enable_upnp, config.value("port_forwarding", false));

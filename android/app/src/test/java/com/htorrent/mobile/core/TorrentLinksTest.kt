@@ -1,6 +1,7 @@
 package com.htorrent.mobile.core
 
 import com.htorrent.mobile.torrent.TorrentPreview
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -11,6 +12,12 @@ class TorrentLinksTest {
         assertTrue(TorrentPreview.isTorrent("https://example.org/linux.torrent?x=1"))
         assertTrue(TorrentPreview.isTorrent("content://downloads/123"))
         assertFalse(TorrentPreview.isTorrent("https://example.org/file.zip"))
+    }
+
+    @Test fun leavesOutTrackersTheEngineRefuses() {
+        val listed = listOf("udp://tracker.example:80", "wss://tracker.example", "https://t.example/a", "http://t.example/b", "ws://x.example")
+        assertEquals(listOf("udp://tracker.example:80", "https://t.example/a", "http://t.example/b"), TorrentPreview.usableTrackers(listed))
+        assertEquals(128, TorrentPreview.usableTrackers(List(200) { "udp://t$it.example:80" }).size)
     }
 
     @Test fun recognisesTorrentDownloadsFromTheBrowser() {
