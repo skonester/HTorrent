@@ -21,6 +21,7 @@ import com.htorrent.mobile.core.Translations
 import com.htorrent.mobile.service.Notifier
 import com.htorrent.mobile.service.Scheduler
 import com.htorrent.mobile.service.canNotify
+import com.htorrent.mobile.torrent.TorrentPreview
 import com.htorrent.mobile.ui.App
 import com.htorrent.mobile.ui.HTorrentTheme
 
@@ -65,10 +66,12 @@ class MainActivity : ComponentActivity() {
         Downloads.init(this)
         browser = Browser(this,
             onOffer = { offer ->
-                if (Downloads.settings.askBeforeDownload) ui.addOffer = offer
+                if (TorrentPreview.isTorrentDownload(offer.url, offer.fileName, offer.mime)) ui.addTorrent = offer.url
+                else if (Downloads.settings.askBeforeDownload) ui.addOffer = offer
                 else com.htorrent.mobile.ui.quickAdd(offer) { ui.message = it }
             },
             onLongPress = { offer, image -> ui.longPress = offer to image },
+            onMagnet = { link -> ui.addTorrent = link },
         )
         val demo = Demo.requested(intent)
         if (!demo && Build.VERSION.SDK_INT >= 33 && !canNotify(this)) notifications.launch(Manifest.permission.POST_NOTIFICATIONS)

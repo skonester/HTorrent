@@ -24,6 +24,11 @@ object TorrentPreview {
             s.substringBefore('?').substringBefore('#').endsWith(".torrent", ignoreCase = true)
     }
 
+    /** A download the browser started that is a .torrent file, judged by its address, its name or its type. */
+    fun isTorrentDownload(url: String, fileName: String?, mime: String?): Boolean =
+        isTorrent(url) || fileName?.trim()?.endsWith(".torrent", ignoreCase = true) == true ||
+            mime?.substringBefore(';')?.trim().equals("application/x-bittorrent", ignoreCase = true)
+
     /** The torrent's name and files; never downloads its content. [cancelled] stops a slow magnet lookup. */
     fun load(context: Context, source: String, cancelled: () -> Boolean = { false }): TorrentInfo {
         val s = source.trim()
@@ -51,12 +56,7 @@ object TorrentPreview {
         val input: InputStream = when {
             source.startsWith("content://") || source.startsWith("file://") ->
                 context.contentResolver.openInputStream(Uri.parse(source)) ?: throw IOException("Can't open the .torrent file.")
-            source.startsWith("https://", true) || source.startsWith("http://", true) -> {
-                val c = URL(source).openConnection() as HttpURLConnection
-                c.connectTimeout = 20_000; c.readTimeout = 30_000; c.instanceFollowRedirects = true
-                if (c.responseCode !in 200..299) throw IOException("The torrent link answered ${c.responseCode}.")
-                c.inputStream
-            }
+            source.startsWith("https://", true) || source.startsWith("http://", true) -> openWeb(context, source)
             else -> File(source).inputStream()
         }
         input.use {
@@ -65,6 +65,29 @@ object TorrentPreview {
             if (bytes.isEmpty() || bytes[0] != 'd'.code.toByte()) throw IOException("This isn't a .torrent file.")
             return bytes
         }
+    }
+
+    /**
+     * Fetches a .torrent the way the built-in browser would, so links on sites you're signed in to work. Redirects are
+     * followed here because Android won't cross between http and https, and so each site only gets its own cookies.
+     */
+    private fun openWeb(context: Context, source: String): InputStream {
+        var url = URL(source)
+        repeat(6) {
+            val c = url.openConnection() as HttpURLConnection
+            c.connectTimeout = 20_000; c.readTimeout = 30_000; c.instanceFollowRedirects = false
+            c.setRequestProperty("User-Agent", android.webkit.WebSettings.getDefaultUserAgent(context))
+            android.webkit.CookieManager.getInstance().getCookie(url.toString())?.let { c.setRequestProperty("Cookie", it) }
+            when (val code = c.responseCode) {
+                in 200..299 -> return c.inputStream
+                301, 302, 303, 307, 308 -> {
+                    url = URL(url, c.getHeaderField("Location") ?: throw IOException("The torrent link answered $code."))
+                    if (url.protocol != "http" && url.protocol != "https") throw IOException("The torrent link redirected somewhere unsupported.")
+                }
+                else -> throw IOException("The torrent link answered $code.")
+            }
+        }
+        throw IOException("The torrent link redirected too many times.")
     }
 
     private fun InputStream.readNBytesCompat(limit: Int): ByteArray {

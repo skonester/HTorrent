@@ -136,7 +136,7 @@ class Settings(context: Context) {
     var saveTree: String? get() = p.getString("saveTree", null); set(v) = p.edit().putString("saveTree", v).apply()
     var saveTreeName: String get() = p.getString("saveTreeName", "") ?: ""; set(v) = p.edit().putString("saveTreeName", v).apply()
     /** Torrents stay off until the user turns them on (peers and trackers can see the phone's IP address). */
-    var torrentsEnabled: Boolean get() = p.getBoolean("torrents", false); set(v) = p.edit().putBoolean("torrents", v).apply()
+    var torrentsEnabled: Boolean get() = p.getBoolean("torrents", true); set(v) = p.edit().putBoolean("torrents", v).apply()
 }
 
 /** The browser's bookmarks (bookmarks.txt in the app's private folder). */

@@ -42,7 +42,7 @@ data class Offer(
  * The built-in browser. It does what the desktop browser extension does: downloads go to HTorrent, and files and
  * videos on the page are listed so they can be saved. Streams (.m3u8) and copy-protected video are not offered.
  */
-class Browser(context: Context, private val onOffer: (Offer) -> Unit, private val onLongPress: (Offer, isImage: Boolean) -> Unit) {
+class Browser(context: Context, private val onOffer: (Offer) -> Unit, private val onLongPress: (Offer, isImage: Boolean) -> Unit, private val onMagnet: (String) -> Unit) {
     val url = MutableStateFlow("")
     val title = MutableStateFlow("")
     val progress = MutableStateFlow(0)
@@ -71,6 +71,8 @@ class Browser(context: Context, private val onOffer: (Offer) -> Unit, private va
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val u = request.url
                 val scheme = u.scheme?.lowercase()
+                // Magnet links open the Add Torrent window, where the user chooses what to download.
+                if (scheme == "magnet") { onMagnet(u.toString()); return true }
                 // Only web pages load here; other links (mail, phone, app links) are ignored for safety.
                 return scheme != "http" && scheme != "https"
             }
@@ -123,6 +125,7 @@ class Browser(context: Context, private val onOffer: (Offer) -> Unit, private va
         setOnLongClickListener {
             val hit = hitTestResult
             val target = hit.extra
+            if (target != null && target.startsWith("magnet:", true)) { onMagnet(target); return@setOnLongClickListener true }
             when (hit.type) {
                 WebView.HitTestResult.SRC_ANCHOR_TYPE, WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE, WebView.HitTestResult.IMAGE_TYPE -> {
                     if (target != null && Links.isWebLink(target)) {

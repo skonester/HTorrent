@@ -22,16 +22,16 @@ concurrency:
 
 jobs:
   extension:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '24'
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
@@ -53,20 +53,20 @@ jobs:
         run: echo "VERSION=$(cat VERSION)" >> "$GITHUB_ENV"
 
       # The artifact is this folder, zipped by GitHub: unzip it, then use "Load unpacked" on chrome://extensions.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: HTorrent-Extension-Chrome-${{ env.VERSION }}
           path: build/extension-chrome
           if-no-files-found: error
 
   android:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # The first run builds libtorrent, Boost and OpenSSL for two processor types; later runs reuse the cache.
     timeout-minutes: 150
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
@@ -81,7 +81,7 @@ jobs:
 
       - name: Restore the torrent engine's build cache
         id: native-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
             .native-cache/installed
@@ -97,7 +97,7 @@ jobs:
       # Only after a successful build: a cache entry can't be replaced, so a partial one would stick.
       - name: Save the torrent engine's build cache
         if: steps.native-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: |
             .native-cache/installed
@@ -116,12 +116,13 @@ jobs:
           done
           echo "Both engine libraries export the expected functions."
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
 
-      - uses: gradle/actions/setup-gradle@v4
+      # Stay on v5: v6 requires accepting Gradle's proprietary Terms of Use for its caching component.
+      - uses: gradle/actions/setup-gradle@v5
         with:
           gradle-version: '8.11.1'
 
@@ -150,13 +151,13 @@ jobs:
 
       - name: Test results
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-test-reports
           path: android/app/build/reports
           if-no-files-found: ignore
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: HTorrent-Android-${{ env.VERSION }}-debug
           path: out/*.apk

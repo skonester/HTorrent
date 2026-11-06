@@ -46,6 +46,13 @@ internal static class Program
             return 1;
         }
 
+        if (NativeHost.IsBrowserLaunch(args))
+            return NativeHost.Run(args[0], runtimeLauncher);
+
+        // The browser extension is optional, so a failure here must never stop the app from opening.
+        try { NativeHost.Register(Environment.ProcessPath!); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException) { }
+
         try
         {
             var psi = new ProcessStartInfo

@@ -8,8 +8,9 @@
   body { font: 13px system-ui, -apple-system, sans-serif; width: 360px; margin: 0; padding: 12px; color: var(--fg); background: var(--bg); }
   h1 { font-size: 14px; margin: 0 0 6px; }
   h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 14px 0 6px; }
+  [hidden] { display: none !important; }
   .row { display: flex; align-items: center; justify-content: space-between; margin: 6px 0; gap: 8px; }
-  input[type=text], input[type=number] { width: 100%; box-sizing: border-box; padding: 5px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 5px; }
+  input[type=text] { width: 100%; box-sizing: border-box; padding: 5px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 5px; }
   button:disabled { opacity: .5; cursor: default; }
   button { padding: 5px 10px; border: 0; border-radius: 5px; background: var(--accent); color: #fff; cursor: pointer; white-space: nowrap; }
   button.plain { background: transparent; color: var(--accent); padding: 2px 4px; }
@@ -18,47 +19,25 @@
   li:last-child { border-bottom: 0; }
   li span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .muted { color: var(--muted); font-size: 12px; }
-  .ok { color: var(--ok); } .bad { color: var(--bad); }
-  details summary { cursor: pointer; color: var(--muted); margin-top: 12px; }
-  [hidden], ul:empty { display: none !important; }
+  .ok { color: var(--ok); font-size: 12px; }
+  .bad { color: var(--bad); font-size: 12px; }
 </style>
 </head>
 <body>
   <h1>HTorrent</h1>
-  <div id="status" class="muted">Checking the app…</div>
-  <div class="row"><span id="paused" class="muted" hidden></span><button class="plain" id="pause">Pause for 30 minutes</button></div>
-  <div id="access" class="row" hidden><span class="muted">Allow the add-on on all sites to catch downloads.</span><button id="grant">Allow</button></div>
-  <div class="row"><input type="text" id="link" placeholder="Paste a link"><button id="send">Add</button></div>
+  <div class="row"><span id="status" class="muted">Checking the app…</span><button id="open">Open HTorrent</button></div>
+  <div class="row"><input type="text" id="link" placeholder="Paste a magnet or .torrent link"><button id="send">Add</button></div>
 
-  <div id="siteBox" hidden>
-    <h2>This page's video</h2>
-    <div class="row"><span class="muted">Best quality, picture and sound joined</span>
-      <span><button class="plain" id="siteAudio">Sound only</button><button id="siteVideo">Download</button></span></div>
-  </div>
-
-  <h2>Media on this page</h2>
-  <ul id="media"></ul>
-  <div id="noMedia" class="muted">Nothing yet. Start playing a video or song, then open this again.</div>
-
-  <h2>Links on this page</h2>
-  <div class="row"><input type="text" id="types" placeholder="File types, e.g. zip pdf mp3 (empty = all files)"><button id="find">Find</button></div>
+  <h2>Torrents on this page</h2>
+  <div class="row"><span id="found" class="muted">Looks for magnet links and .torrent files.</span><button id="find">Find</button></div>
   <ul id="links" hidden></ul>
   <div class="row" id="linkActions" hidden>
     <span><button class="plain" id="all">All</button><button class="plain" id="none">None</button></span>
-    <span><button class="plain" id="later">Download later</button><button id="download">Download</button></span>
+    <button id="add">Add to HTorrent</button>
   </div>
 
-  <details>
-    <summary>Settings</summary>
-    <div class="row"><label for="enabled">Send browser downloads to the app</label><input type="checkbox" id="enabled"></div>
-    <div class="row"><label for="video">Show “Download this video” on players</label><input type="checkbox" id="video"></div>
-    <div class="row"><label for="min">Smallest file to take over (MB)</label><input type="number" id="min" min="0" style="width:70px"></div>
-    <label for="skip" class="muted">Keep these types in the browser</label>
-    <input type="text" id="skip" placeholder="e.g. pdf, jpg">
-    <label for="sites" class="muted">Keep downloads from these sites in the browser</label>
-    <input type="text" id="sites" placeholder="e.g. example.com, files.example.org">
-    <button class="plain" id="thisSite" hidden></button>
-  </details>
+  <h2>Settings</h2>
+  <div class="row"><label for="enabled">Send clicked magnet links and downloaded .torrent files to HTorrent</label><input type="checkbox" id="enabled"></div>
   <script type="module" src="popup.js"></script>
 </body>
 </html>
