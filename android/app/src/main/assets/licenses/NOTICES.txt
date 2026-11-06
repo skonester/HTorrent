@@ -1,0 +1,59 @@
+HTORRENT FOR ANDROID: LICENSES AND SOURCE CODE
+
+HTorrent for Android is a rebranded copy of the Android app from Nexonic Download
+Manager by Shahrukh Khalid (https://github.com/Shahrukhalid/nexonic-download-manager).
+
+The Android app as a whole (the APK) is distributed under the GNU General Public
+License, version 3 (GPL-3.0), because it includes the video engine below, which is
+licensed under GPL-3.0. The full text is in GPL-3.0.txt.
+
+Nexonic's own source code (by Shahrukh Khalid) is also available separately under
+MIT OR Apache-2.0, at your option (MIT-Nexonic.txt, Apache-2.0.txt). Both licenses
+are compatible with GPL-3.0. Nothing in the app's terms of use limits the rights the
+GPL-3.0 and the other licenses below give you.
+
+SOURCE CODE (Corresponding Source)
+- HTorrent for Android, exactly as built for each release: the matching version
+  tag at https://github.com/skonester/HTorrent (build steps: android/README.md). The source archive is also attached to every GitHub release.
+- Every release also has Android-GPL-Sources.tar.gz attached: the source of
+  youtubedl-android 0.18.1 (https://github.com/yausername/youtubedl-android),
+  the Termux recipes and patches used to build its Python and FFmpeg
+  (https://github.com/termux/termux-packages), and the original source archive
+  of every library they are built with.
+If you cannot get any of this source, ask at
+https://github.com/skonester/HTorrent/issues and it will be
+provided free of charge for at least three years after the last release that
+included it.
+
+COMPONENTS INCLUDED IN THE APK
+- youtubedl-android (library, ffmpeg): GPL-3.0. Copyright the youtubedl-android
+  authors.
+- FFmpeg 7.1 (libavcodec 61 and related libraries), built with --enable-gpl: GPL-3.0
+  for the combined build. https://ffmpeg.org
+- Python 3.12 (CPython): Python Software Foundation License Version 2
+  (PSF-2.0-Python.txt). Copyright (c) 2001 Python Software Foundation.
+  With PyCryptodome (BSD-2-Clause and public domain).
+- Libraries bundled with FFmpeg and Python (Termux builds, listed by the Android
+  build check for each release), under the licenses their projects declare:
+  GPL-2.0-or-later: x264, x265, Xvid, FFTW, Rubber Band, vid.stab.
+  LGPL (2.1-or-later or 3.0-or-later): GnuTLS, Nettle, GMP, GLib, libbluray,
+    LAME, mpg123, libssh, libiconv, libidn2, libunistring, FriBidi, soxr,
+    Game Music Emu, v4l-utils, libudfread.
+  MPL-2.0: ZeroMQ (libzmq), SRT.
+  Apache-2.0: OpenSSL, opencore-amr, vo-amrwbenc.
+  BSD, MIT, ISC or similar: libvpx, libaom, dav1d, rav1e, SVT-AV1, Opus, Ogg,
+    Vorbis, Theora, libwebp, libpng, FreeType (FreeType License), HarfBuzz,
+    Graphite2, Fontconfig, libass, libxml2, zimg, Little CMS, libsamplerate,
+    libopenmpt, libsodium, Brotli, bzip2, XZ (liblzma), zlib, PCRE2, libffi,
+    SQLite (public domain), OpenCL ICD loader.
+- yt-dlp (downloaded and updated by the app): The Unlicense (public domain).
+  https://github.com/yt-dlp/yt-dlp
+- Apache Commons Compress (used by youtubedl-android): Apache-2.0.
+- AndroidX, Jetpack Compose, Material components: Apache-2.0. Copyright The
+  Android Open Source Project.
+- Kotlin standard library and kotlinx.coroutines: Apache-2.0. Copyright JetBrains
+  s.r.o. and contributors.
+- Jackson (used by youtubedl-android): Apache-2.0.
+
+Full license texts: GPL-3.0.txt, Apache-2.0.txt, PSF-2.0-Python.txt,
+MIT-Nexonic.txt (all in this folder of the app).

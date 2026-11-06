@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "HTorrent",
+  "version": "1.0.2",
+  "description": "Sends downloads, videos and links from the browser to HTorrent.",
+  "minimum_chrome_version": "116",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAn08B+PwziSpWcrN9KKP/eDiAmaM+jolf3p797ntQcQNw23Hr8/HwB4ctUL4xwmIEqEu24AhJO3aTyL2S6Kl4ml25QlxMTP+rPHRwBK0Wyaf998lW6N4mTuNYNX+Rehe/iHqkRdfnp87JfgUjqNlSR8bBMWLEPS9zx0xiiJ6XVUasB5Kf8eJCG3ggXQFlhAj042idcSnrlgG5/Nqnf+b5X6VI5P38dD/QA8jT3am6AMI9CGj0HrXdnjQ0eElLnylF0k10ng0yQ4enBzNMS9sacKJfiyZGxNL79xh0pKlx2Z1x9+18GaqWkPOH6vkxccnjzbyk7dFMc6YfSfPusdWPNQIDAQAB",
+  "permissions": [
+    "downloads",
+    "nativeMessaging",
+    "contextMenus",
+    "storage",
+    "cookies",
+    "scripting",
+    "webRequest",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "HTorrent"
+  },
+  "icons": {
+    "16": "icons/16.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ]
+}

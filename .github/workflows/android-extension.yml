@@ -1,0 +1,163 @@
+name: Android and extension
+
+# Test builds of the Android app and the Chrome extension. Each run leaves two downloadable artifacts on its page.
+# This publishes nothing, and it does not start the Windows installer workflow, which only watches HTorrent/**.
+on:
+  push:
+    paths:
+      - 'VERSION'
+      - 'android/**'
+      - 'extension/**'
+      - 'native/**'
+      - 'scripts/**'
+      - '.github/workflows/android-extension.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-extension-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  extension:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Test
+        working-directory: extension
+        run: node --test
+
+      - name: Build
+        run: python3 scripts/build-extension.py
+
+      - name: Check the scripts parse
+        run: |
+          for f in background helpers content popup; do
+            cp "build/extension-chrome/$f.js" "$RUNNER_TEMP/$f.mjs"
+            node --check "$RUNNER_TEMP/$f.mjs"
+          done
+
+      - name: Read version
+        run: echo "VERSION=$(cat VERSION)" >> "$GITHUB_ENV"
+
+      # The artifact is this folder, zipped by GitHub: unzip it, then use "Load unpacked" on chrome://extensions.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HTorrent-Extension-Chrome-${{ env.VERSION }}
+          path: build/extension-chrome
+          if-no-files-found: error
+
+  android:
+    runs-on: ubuntu-latest
+    # The first run builds libtorrent, Boost and OpenSSL for two processor types; later runs reuse the cache.
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Native build tools
+        timeout-minutes: 15
+        run: |
+          for try in 1 2 3; do
+            timeout 300 sudo apt-get update -qq && timeout 400 sudo apt-get install -y -qq ninja-build pkg-config autoconf automake libtool && exit 0
+            sleep 20
+          done
+          exit 1
+
+      - name: Restore the torrent engine's build cache
+        id: native-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .native-cache/installed
+            .native-cache/binaries
+            .native-cache/vcpkg/downloads
+          key: native-android-${{ hashFiles('native/vcpkg.json', 'native/triplets/**', 'native/src/**', 'native/include/**') }}
+          restore-keys: native-android-
+
+      - name: Build the torrent engine
+        run: bash scripts/android-torrent-libs.sh arm64 arm
+
+      # Saved right away, so a failure in the steps below doesn't throw away an hour of native compiling.
+      # Only after a successful build: a cache entry can't be replaced, so a partial one would stick.
+      - name: Save the torrent engine's build cache
+        if: steps.native-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .native-cache/installed
+            .native-cache/binaries
+            .native-cache/vcpkg/downloads
+          key: native-android-${{ hashFiles('native/vcpkg.json', 'native/triplets/**', 'native/src/**', 'native/include/**') }}
+
+      # The app quietly turns torrents off if the engine can't load, so catch a wrong package name here instead.
+      - name: Check the engine matches the app's package
+        run: |
+          for abi in arm64-v8a armeabi-v7a; do
+            so="android/app/src/main/jniLibs/$abi/libnexonic_torrent.so"
+            for fn in create call destroy; do
+              grep -qa "Java_com_htorrent_mobile_torrent_NativeTorrent_$fn" "$so" || { echo "$so does not export $fn"; exit 1; }
+            done
+          done
+          echo "Both engine libraries export the expected functions."
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Test
+        run: gradle -p android --no-daemon testDebugUnitTest
+
+      - name: Build the debug APK
+        run: gradle -p android --no-daemon assembleDebug
+
+      - name: Check the APK
+        run: |
+          set -e
+          V=$(cat VERSION)
+          echo "VERSION=$V" >> "$GITHUB_ENV"
+          mkdir -p out
+          cp android/app/build/outputs/apk/debug/app-debug.apk "out/HTorrent-Android-$V-debug.apk"
+          AAPT="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/aapt2"
+          "$AAPT" dump badging "out/HTorrent-Android-$V-debug.apk" | grep -E "^package|^application-label:|native-code"
+          "$AAPT" dump badging "out/HTorrent-Android-$V-debug.apk" | grep -q "name='com.htorrent.mobile.debug'"
+          for abi in arm64-v8a armeabi-v7a; do
+            unzip -l "out/HTorrent-Android-$V-debug.apk" "lib/$abi/libnexonic_torrent.so" >/dev/null
+          done
+          unzip -l "out/HTorrent-Android-$V-debug.apk" assets/licenses/NOTICES.txt assets/licenses/MIT-Nexonic.txt >/dev/null
+          ls -la out
+          sha256sum out/*.apk
+
+      - name: Test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-test-reports
+          path: android/app/build/reports
+          if-no-files-found: ignore
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HTorrent-Android-${{ env.VERSION }}-debug
+          path: out/*.apk
+          if-no-files-found: error

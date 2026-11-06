@@ -1,0 +1,9 @@
+/build/
+node_modules/
+__pycache__/
+
+# Torrent engine toolchain and everything scripts/android-torrent-libs.sh generates
+.native-cache/
+native/build/
+android/app/src/main/jniLibs/
+android/app/src/main/assets/licenses/Torrent-engine-NOTICES.txt

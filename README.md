@@ -68,6 +68,11 @@ You need [JDK 21](https://adoptium.net/), the [.NET 10 SDK](https://dotnet.micro
 | `HTorrent/HTorrentCompose/player` | HTorrentPlayer, an F# app using [InfiniFrame](https://github.com/InfiniLore/InfiniFrame) (WebView2) |
 | `HTorrent/HTorrentCompose/launcher` | The small native `HTorrent.exe` that starts the Java app |
 | `HTorrent/HTorrentCompose/installer` | The NSIS installer script |
+| `android` | HTorrent for Android (see [android/README.md](android/README.md)) |
+| `extension` | The Chrome extension |
+| `native` | The libtorrent wrapper the Android app uses |
+
+The *Android and extension* workflow builds test copies of the Android app and the extension. Their version comes from the `VERSION` file.
 
 ### Releases
 
@@ -89,5 +94,6 @@ HTorrent includes code adapted from these projects, used under their own license
 - HTML parsing uses [jsoup](https://jsoup.org/) (MIT).
 - HTorrentPlayer is built on [InfiniFrame](https://github.com/InfiniLore/InfiniFrame) (Apache-2.0).
 - HTorrentPlayer's interface is adapted from [Perdanga VSP](https://gitlab.com/perdanga/perdanga-vsp) by PerdangaSoftware (MIT).
+- The Android app and Chrome extension are copied from [Nexonic Download Manager](https://github.com/Shahrukhalid/nexonic-download-manager) by Shahrukh Khalid (MIT). See `NEXONIC-NOTICE.md`.
 
 The license texts are in `HTorrent/HTorrentCompose/licenses` and are installed with the app.

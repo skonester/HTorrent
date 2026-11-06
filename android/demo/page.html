@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open Lecture Series · Week 8</title>
+<style>
+  body{margin:0;font:16px/1.55 -apple-system,Roboto,"Segoe UI",sans-serif;color:#1f2937;background:#f8fafc}
+  header{background:#0f766e;color:#fff;padding:18px 18px 22px}
+  header small{opacity:.8;letter-spacing:.08em;text-transform:uppercase;font-size:12px}
+  header h1{margin:6px 0 0;font-size:24px;line-height:1.2}
+  main{padding:16px 18px 40px}
+  .player{background:linear-gradient(135deg,#134e4a,#0f172a);border-radius:12px;aspect-ratio:16/9;display:grid;place-items:center;color:#99f6e4;font-weight:600;margin-bottom:6px;position:relative;overflow:hidden}
+  .player video{position:absolute;inset:0;width:100%;height:100%;opacity:0}
+  .play{width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.15);display:grid;place-items:center;font-size:22px}
+  .meta{color:#64748b;font-size:14px;margin:0 0 18px}
+  h2{font-size:18px;margin:22px 0 8px}
+  ul{list-style:none;padding:0;margin:0}
+  li{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:8px}
+  li a{color:#0f766e;font-weight:600;text-decoration:none}
+  li span{display:block;color:#64748b;font-size:13px}
+</style>
+</head>
+<body>
+<header><small>Open Lecture Series</small><h1>Week 8: Networks and the Web</h1></header>
+<main>
+  <div class="player">
+    <div class="play">▶</div>
+    <video controls preload="none">
+      <source src="{{FILES}}/lecture-08-1080p.mp4" type="video/mp4" label="1080p">
+      <source src="{{FILES}}/lecture-08-720p.mp4" type="video/mp4" label="720p">
+      <source src="{{FILES}}/lecture-08-480p.mp4" type="video/mp4" label="480p">
+    </video>
+  </div>
+  <p class="meta">Lecture 8 · 1 h 12 min · Free to download for personal study</p>
+
+  <h2>Listen</h2>
+  <ul><li><a href="{{FILES}}/lecture-08-audio.mp3">Audio only (MP3)</a><span>For listening on the go</span></li></ul>
+
+  <h2>Course files</h2>
+  <ul>
+    <li><a href="{{FILES}}/week-08-slides.pdf">Slides (PDF)</a><span>42 pages</span></li>
+    <li><a href="{{FILES}}/week-08-exercises.zip">Exercises and sample code (ZIP)</a><span>Starter projects for all exercises</span></li>
+    <li><a href="{{FILES}}/reading-list.epub">Reading list (EPUB)</a><span>Chapters 11–13</span></li>
+  </ul>
+</main>
+</body>
+</html>
