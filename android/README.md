@@ -35,8 +35,11 @@ The app lists every component, its license and where to get the source under *Se
 
 ## Build
 
-The *Android and extension* GitHub Actions workflow builds a debug APK you can install on a phone. It builds the torrent
-engine from source first, so the first run takes much longer than later ones.
+The *Build and release* GitHub Actions workflow builds a debug APK you can install on a phone and publishes it as
+`HTorrent-Android-<version>-debug.apk` alongside the Windows installer and Chrome extension in GitHub Releases.
+It builds the torrent engine from source for 64-bit and 32-bit ARM first, so the first run takes much longer than later ones.
+The release also includes the video engine's source archive and checksums. These CI builds use the separate
+`com.htorrent.mobile.debug` application ID; they are not production-signed release builds.
 
 To build locally without the torrent engine (JDK 17, Android SDK, Gradle 8.11):
 

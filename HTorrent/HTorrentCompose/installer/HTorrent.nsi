@@ -1,5 +1,5 @@
 ; HTorrent Windows installer (NSIS 3). Built by `gradlew packageInstaller`, which passes:
-;   /DVERSION=1.0.2  /DSOURCE_DIR=<build/dist/HTorrent>  /DOUT_FILE=<setup exe path>
+;   /DVERSION=1.0.3  /DSOURCE_DIR=<build/dist/HTorrent>  /DOUT_FILE=<setup exe path>
 ; Installs the packageApp layout (HTorrent.exe launcher + runtime/) per machine.
 
 Unicode true

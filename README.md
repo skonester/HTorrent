@@ -10,6 +10,8 @@ HTorrent is a modern, lightweight BitTorrent client for Windows by Skonester, in
 
 Get the latest `HTorrent-Setup-<version>.exe` from the [Releases page](https://github.com/skonester/HTorrent/releases/latest) and run it. It installs HTorrent with Start menu and optional desktop shortcuts, and it can be removed from **Settings → Apps**.
 
+The same release includes `HTorrent-Extension-Chrome-<version>.zip` and an installable `HTorrent-Android-<version>-debug.apk`. Unzip the extension, enable **Developer mode** at `chrome://extensions`, and choose **Load unpacked**. The Android APK is a debug build with the torrent engine included; see [android/README.md](android/README.md).
+
 The installer can also register HTorrent as an available handler for `.torrent` files and magnet links. Windows keeps your current defaults; choose HTorrent in **Default apps** if you want those links to open here. Launches from Explorer go to the running HTorrent window.
 
 **Requirements:** 64-bit Windows 10 or 11. HTorrentPlayer uses the Microsoft Edge WebView2 Runtime, which comes with Windows 11 and most up-to-date Windows 10 PCs. If the player reports that it is missing, install it from [Microsoft](https://developer.microsoft.com/microsoft-edge/webview2/).
@@ -72,11 +74,15 @@ You need [JDK 21](https://adoptium.net/), the [.NET 10 SDK](https://dotnet.micro
 | `extension` | The Chrome extension |
 | `native` | The libtorrent wrapper the Android app uses |
 
-The *Android and extension* workflow builds test copies of the Android app and the extension. Their version comes from the `VERSION` file.
+The *Build and release* workflow builds the Windows installer, Android debug APK and Chrome extension ZIP. Their version comes from the root `VERSION` file.
 
 ### Releases
 
-Every push to `main` that changes `HTorrent/` builds the installer on GitHub Actions and publishes it to the release for the current version, `v<version>`. The version comes from `version` in `HTorrent/HTorrentCompose/build.gradle.kts`. If a release for that version already exists, its installer is replaced with the new build. To publish a new version as its own release, bump the version in `build.gradle.kts`, `launcher/HTorrent.Launcher.csproj`, `player/HTorrentPlayer.fsproj` and the window title in `Main.kt`.
+Every push to `main` that changes `VERSION`, app sources, build scripts or workflows builds all three apps on GitHub Actions. Once every build succeeds, the workflow publishes the Windows installer, Chrome extension ZIP, Android debug APK, Android video engine source archive and `SHA256SUMS.txt` to the same `v<version>` release. If that release already exists, its assets are replaced and its tag is updated to the build's commit.
+
+Matching `v<version>` tags also build and publish all assets; a tag that disagrees with `VERSION` fails before the app builds. You can run *Build and release* manually as well: runs on `main` or a matching version tag publish a release, while runs on other branches only upload workflow artifacts.
+
+To publish a new version, bump `VERSION` and keep `extension/manifest.json`, the desktop launcher and player project metadata, `player/app.manifest` and the window title in `Main.kt` in sync. Gradle and the extension builder read `VERSION` directly.
 
 ## License
 

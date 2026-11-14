@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.htorrent"
-version = "1.0.2"
+version = rootProject.file("../../VERSION").readText().trim()
 
 dependencies {
     implementation(compose.desktop.currentOs)
@@ -21,7 +21,7 @@ compose.desktop {
             modules("jdk.httpserver", "java.xml", "jdk.crypto.ec", "java.net.http")
             // No targetFormats — we use createDistributable, not an installer
             packageName = "HTorrent"
-            packageVersion = "1.0.2"
+            packageVersion = project.version.toString()
             description = "HTorrent - Torrent Client by Skonester"
             vendor = "Skonester"
             copyright = "Copyright © 2026 Skonester"
