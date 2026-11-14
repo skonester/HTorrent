@@ -4,6 +4,70 @@
 # distributes the app. HTorrent's own source is the release's "Source code" archive.
 #   scripts/android-gpl-sources.sh OUT_DIR        (DRY=1 lists the components without downloading them)
 set -euo pipefail
+
+fetch() {
+  local url="$1" dest="$2" want="${3:-}" part="$2.part" got
+  # Some source hosts repeatedly fail HTTP/2 transfers on the Actions runners.
+  if ! curl --http1.1 -fsSL --retry 4 --retry-all-errors --retry-delay 5 --connect-timeout 20 --max-time 600 -o "$part" "$url"; then
+    rm -f -- "$part"
+    return 1
+  fi
+  got="$(sha256sum "$part" | cut -d' ' -f1)"
+  if [ -n "$want" ] && [ "$want" != SKIP_CHECKSUM ]; then
+    if [ "$got" != "$want" ]; then
+      echo "Rejected $url: expected SHA-256 $want, got $got" >&2
+      rm -f -- "$part"
+      return 1
+    fi
+  elif ! tar -tf "$part" >/dev/null 2>&1 && ! unzip -tq "$part" >/dev/null 2>&1; then
+    echo "Rejected $url: not a source archive" >&2
+    rm -f -- "$part"
+    return 1
+  fi
+  mv -- "$part" "$dest"
+  SOURCE_URL="$url"
+  SOURCE_FILE="$dest"
+  SOURCE_SHA256="$got"
+}
+get() { # URL, destination, recipe checksum; record the actual download's URL/file/checksum on success.
+  local want="${3:-}"
+  # Pin replacements only for these exact recipe URL/checksum pairs, without changing the archived recipes.
+  case "$1|$want" in
+    'https://fossies.org/linux/misc/lzo-2.10.tar.xz|37ed4369e45944c53306b0d6a36b66f03e5b6aede8849c9b6388f4b62b20b443')
+      # Fossies removed the xz archive. Upstream still serves the original 2.10 gzip release.
+      fetch "https://www.oberhumer.com/opensource/lzo/download/lzo-2.10.tar.gz" "${2%.tar.xz}.tar.gz" \
+        c0f892943208266f9b6543b3ae308fab6284c5c90e627931446fb49b4221a072
+      return $? ;;
+    'https://codeberg.org/dnkl/foot/archive/1.24.0.tar.gz|db2266f1a541662187ded46648a52feb0f8761b26ef7a8360bf3ac8315321bef')
+      # Codeberg regenerated its archives. All 245 files were verified against tag 1.24.0's git tree.
+      fetch "https://codeberg.org/dnkl/foot/archive/fa0fd2f50f41d8fc47241dd576be42a2f29d6530.tar.gz" "$2" \
+        e86cf92895f16bbd3f02c6bae706717790f5a7a686bc37182d715a3defe73349
+      return $? ;;
+  esac
+  fetch "$1" "$2" "$want" && return 0
+  case "$1" in
+    *ffmpeg.org/releases/ffmpeg-*)
+      fetch "https://ffmpeg.org/releases/$(basename "$1")" "$2" "$want" ;;
+    *linuxtv.org/downloads/v4l-utils/v4l-utils-*)
+      fetch "https://www.linuxtv.org/downloads/v4l-utils/$(basename "$1")" "$2" "$want" && return 0
+      if [ "$1|$want" = 'https://linuxtv.org/downloads/v4l-utils/v4l-utils-1.24.1.tar.bz2|cbb7fe8a6307f5ce533a05cded70bb93c3ba06395ab9b6d007eb53b75d805f5b' ]; then
+        fetch "https://github.com/gjasny/v4l-utils/archive/refs/tags/v4l-utils-1.24.1.tar.gz" "${2%.tar.bz2}.tar.gz" \
+          d4e43d47ef3c23b808ae4fdf6a1dd366e89e0cf8e5f5cd43ee4751d315444ffe
+      else
+        return 1
+      fi ;;
+    *downloads.sourceforge.net/project/giflib/giflib-5.*)
+      # Upstream moved the 5.x releases into a subdirectory in 2026.
+      fetch "https://downloads.sourceforge.net/project/giflib/giflib-5.x/$(basename "$1")" "$2" "$want" \
+        || fetch "https://mirrors.omnios.org/libgif/$(basename "$1")" "$2" "$want" ;;
+    *downloads.sourceforge.net/project/*) fetch "https://master.dl.sourceforge.net/project/${1#*downloads.sourceforge.net/project/}?viasf=1" "$2" "$want" ;;
+    *) sleep 20; fetch "$1" "$2" "$want" ;;  # one more try after a pause
+  esac
+}
+
+# Let the downloader be sourced by its tests without starting source collection.
+if [ "${BASH_SOURCE[0]}" != "$0" ]; then return 0; fi
+
 OUT="$(mkdir -p "$1" && cd "$1" && pwd)"
 YTDL_TAG=0.18.1   # io.github.junkfood02.youtubedl-android in android/app/build.gradle.kts
 # termux-packages on the day youtubedl-android bumped FFmpeg 7.1.1 and Python 3.12.11 (the versions in 0.18.1).
@@ -13,31 +77,6 @@ TERMUX_COMMIT=8ddd9a7fc8e06330545487d81bb7591cb40f1aa6
 WORK="$(mktemp -d)"
 ROOT="$WORK/Android-GPL-Sources"
 mkdir -p "$ROOT/upstream"
-fetch() { curl -fsSL --retry 4 --retry-all-errors --retry-delay 5 --connect-timeout 20 -o "$2" "$1" && usable "$2"; }
-usable() { # the recipe's file, or at least a real source archive (not an error or challenge page served with status 200)
-  if [ -n "${WANT:-}" ] && [ "$WANT" != SKIP_CHECKSUM ] && [ "$(sha256sum "$1" | cut -d' ' -f1)" = "$WANT" ]; then return 0; fi
-  tar -tf "$1" >/dev/null 2>&1 || unzip -tq "$1" >/dev/null 2>&1
-}
-get() { # the URL, then known mirrors for hosts that are often down
-  fetch "$1" "$2" && return 0
-  case "$1" in
-    *ffmpeg.org/releases/ffmpeg-*)
-      v="$(basename "$1" | sed -E 's/^ffmpeg-(.*)\.tar\.[a-z0-9]+$/\1/')"
-      fetch "https://ffmpeg.org/releases/$(basename "$1")" "$2" \
-        || fetch "https://github.com/FFmpeg/FFmpeg/archive/refs/tags/n$v.tar.gz" "$2" ;;
-    *linuxtv.org/downloads/v4l-utils/v4l-utils-*)
-      v="$(basename "$1" | sed -E 's/^v4l-utils-(.*)\.tar\.[a-z0-9]+$/\1/')"
-      fetch "https://www.linuxtv.org/downloads/v4l-utils/$(basename "$1")" "$2" \
-        || fetch "https://github.com/gjasny/v4l-utils/archive/refs/tags/v4l-utils-$v.tar.gz" "$2" ;;
-    *fossies.org/*/lzo-*) fetch "https://www.oberhumer.com/opensource/lzo/download/$(basename "$1" .tar.xz).tar.gz" "$2" ;;
-    *downloads.sourceforge.net/project/giflib/giflib-5.*)
-      # Upstream moved the 5.x releases into a subdirectory in 2026.
-      fetch "https://downloads.sourceforge.net/project/giflib/giflib-5.x/$(basename "$1")" "$2" \
-        || fetch "https://mirrors.omnios.org/libgif/$(basename "$1")" "$2" ;;
-    *downloads.sourceforge.net/project/*) fetch "https://master.dl.sourceforge.net/project/${1#*downloads.sourceforge.net/project/}?viasf=1" "$2" ;;
-    *) sleep 20; fetch "$1" "$2" ;;  # one more try after a pause
-  esac
-}
 
 # 1. youtubedl-android at the released tag (GPL-3.0).
 [ -n "${DRY:-}" ] || git -c advice.detachedHead=false clone -q --depth 1 --branch "$YTDL_TAG" https://github.com/yausername/youtubedl-android.git "$ROOT/youtubedl-android"
@@ -93,17 +132,10 @@ while [ ${#queue[@]} -gt 0 ]; do
       git+*) if git clone -q --depth 1 "${u#git+}" "$ROOT/upstream/$name/$(basename "${u%.git}")"; then rm -rf "$ROOT/upstream/$name"/*/.git
              else echo "::warning::Could not clone $u"; echo "$name: NOT INCLUDED (clone failed, get it from $u)" >> "$ROOT/COMPONENTS.txt"; continue; fi ;;
       *) f="$ROOT/upstream/$name/$(basename "${u%%\?*}")"
-         WANT="${sums[$i]:-}"
-         if ! get "$u" "$f"; then
+         if ! get "$u" "$f" "${sums[$i]:-}"; then
            echo "::warning::Could not download $u"; echo "$name: NOT INCLUDED (download failed, get it from $u)" >> "$ROOT/COMPONENTS.txt"; continue
          fi
-         want="${sums[$i]:-}"
-         if [ -n "$want" ] && [ "$want" != SKIP_CHECKSUM ]; then
-           got="$(sha256sum "$f" | cut -d' ' -f1)"
-           # Upstream sometimes re-packs an archive (it is a verified archive by now); keep it, but say so
-           # (the recipe's checksum is in termux-packages/).
-           [ "$got" = "$want" ] || { echo "::warning::Checksum differs from the recipe: $u"; echo "$name: checksum differs from the recipe ($got)" >> "$ROOT/COMPONENTS.txt"; }
-         fi ;;
+         echo "$name: downloaded $SOURCE_URL as $(basename "$SOURCE_FILE"), SHA-256 $SOURCE_SHA256 (recipe SHA-256 ${sums[$i]:-not specified})" >> "$ROOT/COMPONENTS.txt" ;;
     esac
     echo "$name: $u" >> "$ROOT/COMPONENTS.txt"
   done
@@ -122,9 +154,9 @@ This archive holds:
   with BUILD_PYTHON.md and BUILD_FFMPEG.md describing how its bundled files are built;
 - termux-packages/: the Termux build scripts, recipes and patches at commit $TERMUX_COMMIT
   (https://github.com/termux/termux-packages), the recipes for Python, FFmpeg and their run-time libraries;
-- upstream/: the original source archive of each of those projects, as the recipes download them (checksums
-  checked against the recipes);
-- COMPONENTS.txt: every component and where its source came from.
+- upstream/: source archives verified against the recipe checksums or explicitly pinned alternate archives
+  of the same version when the original download was removed or regenerated;
+- COMPONENTS.txt: every component, its original URL, actual download URL, filename and SHA-256.
 HTorrent's own source code is the "Source code" archive of the same release, or the matching tag at
 https://github.com/skonester/HTorrent. Questions: open an issue in that repository.
 TXT

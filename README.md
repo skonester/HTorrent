@@ -78,7 +78,7 @@ The *Build and release* workflow builds the Windows installer, Android debug APK
 
 ### Releases
 
-Every push to `main` that changes `VERSION`, app sources, build scripts or workflows builds all three apps on GitHub Actions. Once every build succeeds, the workflow publishes the Windows installer, Chrome extension ZIP, Android debug APK, Android video engine source archive and `SHA256SUMS.txt` to the same `v<version>` release. If that release already exists, its assets are replaced and its tag is updated to the build's commit.
+Every push to `main` that changes `VERSION`, app sources, build scripts or workflows builds all three apps on GitHub Actions. Once every build succeeds, the workflow publishes the Windows installer, Chrome extension ZIP, Android debug APK and `SHA256SUMS.txt` to the same `v<version>` release. If that release already exists, its assets are replaced and its tag is updated to the build's commit. Third-party source and build instructions are linked below under [Third-party source code](#third-party-source-code).
 
 Matching `v<version>` tags also build and publish all assets; a tag that disagrees with `VERSION` fails before the app builds. You can run *Build and release* manually as well: runs on `main` or a matching version tag publish a release, while runs on other branches only upload workflow artifacts.
 
@@ -89,6 +89,22 @@ To publish a new version, bump `VERSION` and keep `extension/manifest.json`, the
 HTorrent, including HTorrentPlayer, is free software released under the [GNU General Public License v3.0](LICENSE). You can use, study, share and change it; if you distribute a modified version, it must also be under GPL-3.0 with its source code available.
 
 Copyright © 2026 Skonester.
+
+## Third-party source code
+
+HTorrent's own source is available from the matching `v<version>` tag and the **Source code** downloads on the [Releases page](https://github.com/skonester/HTorrent/releases). Source and build information for the bundled Android video and torrent engines is available directly from these upstream projects:
+
+| Component | Source code | Build instructions and patches |
+| --- | --- | --- |
+| youtubedl-android 0.18.1 (`library` and `ffmpeg`) | [Version 0.18.1](https://github.com/yausername/youtubedl-android/tree/0.18.1) | [FFmpeg instructions](https://github.com/yausername/youtubedl-android/blob/0.18.1/BUILD_FFMPEG.md), [Python instructions](https://github.com/yausername/youtubedl-android/blob/0.18.1/BUILD_PYTHON.md) |
+| FFmpeg 7.1.1 | [Source archive](https://www.ffmpeg.org/releases/ffmpeg-7.1.1.tar.xz) | [Termux recipe and patches](https://github.com/termux/termux-packages/tree/8ddd9a7fc8e06330545487d81bb7591cb40f1aa6/packages/ffmpeg) |
+| CPython 3.12.11 | [Source archive](https://www.python.org/ftp/python/3.12.11/Python-3.12.11.tar.xz) | [Termux recipe and patches](https://github.com/termux/termux-packages/tree/8ddd9a7fc8e06330545487d81bb7591cb40f1aa6/packages/python) |
+| Libraries bundled with FFmpeg and Python | [Termux package recipes at the pinned commit](https://github.com/termux/termux-packages/tree/8ddd9a7fc8e06330545487d81bb7591cb40f1aa6/packages) | Each `build.sh` lists the dependency versions, source URLs, checksums and dependencies; package folders include platform patches. [Build scripts](https://github.com/termux/termux-packages/tree/8ddd9a7fc8e06330545487d81bb7591cb40f1aa6/scripts) |
+| libtorrent-rasterbar 2.0.11 | [Version 2.0.11](https://github.com/arvidn/libtorrent/tree/v2.0.11) | [HTorrent native build instructions](native/README.md), [Android build script](scripts/android-torrent-libs.sh) |
+| Native engine dependencies, including Boost and OpenSSL | [vcpkg ports at the pinned commit](https://github.com/microsoft/vcpkg/tree/ef7dbf94b9198bc58f45951adcf1f041fcbc5ea0/ports) | Port folders contain source URLs, versions, checksums and patches. [HTorrent native build script](scripts/build-torrent-native.py) |
+| yt-dlp (updated by the app) | [Upstream releases and source](https://github.com/yt-dlp/yt-dlp/releases) | Use the release matching the version shown under **Settings → Video engine**. |
+
+The Android app also lists component licenses and source locations under **Settings → About → Open-source licenses**. Other projects used by HTorrent are linked in [Credits](#credits).
 
 ## Credits
 

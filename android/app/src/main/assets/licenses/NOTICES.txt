@@ -15,11 +15,17 @@ GPL-3.0 and the other licenses below give you.
 SOURCE CODE (Corresponding Source)
 - HTorrent for Android, exactly as built for each release: the matching version
   tag at https://github.com/skonester/HTorrent (build steps: android/README.md). The source archive is also attached to every GitHub release.
-- Every release also has Android-GPL-Sources.tar.gz attached: the source of
-  youtubedl-android 0.18.1 (https://github.com/yausername/youtubedl-android),
-  the Termux recipes and patches used to build its Python and FFmpeg
-  (https://github.com/termux/termux-packages), and the original source archive
-  of every library they are built with.
+- Version-specific third-party source and build links are listed in the README:
+  https://github.com/skonester/HTorrent#third-party-source-code
+- youtubedl-android 0.18.1 source and build instructions:
+  https://github.com/yausername/youtubedl-android/tree/0.18.1
+  https://github.com/yausername/youtubedl-android/blob/0.18.1/BUILD_FFMPEG.md
+  https://github.com/yausername/youtubedl-android/blob/0.18.1/BUILD_PYTHON.md
+- FFmpeg 7.1.1 and CPython 3.12.11 source:
+  https://www.ffmpeg.org/releases/ffmpeg-7.1.1.tar.xz
+  https://www.python.org/ftp/python/3.12.11/Python-3.12.11.tar.xz
+- Termux recipes, patches and dependency source URLs:
+  https://github.com/termux/termux-packages/tree/8ddd9a7fc8e06330545487d81bb7591cb40f1aa6
 If you cannot get any of this source, ask at
 https://github.com/skonester/HTorrent/issues and it will be
 provided free of charge for at least three years after the last release that

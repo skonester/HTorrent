@@ -33,12 +33,15 @@ an FFmpeg built with GPL parts, and the rest of this repository is GPL-3.0, so t
 The app lists every component, its license and where to get the source under *Settings -> About -> Open-source licenses*
 ([app/src/main/assets/licenses](app/src/main/assets/licenses)).
 
+Version-specific source links, dependency recipes, patches and build instructions are listed in the root
+[README's third-party source section](../README.md#third-party-source-code).
+
 ## Build
 
 The *Build and release* GitHub Actions workflow builds a debug APK you can install on a phone and publishes it as
 `HTorrent-Android-<version>-debug.apk` alongside the Windows installer and Chrome extension in GitHub Releases.
 It builds the torrent engine from source for 64-bit and 32-bit ARM first, so the first run takes much longer than later ones.
-The release also includes the video engine's source archive and checksums. These CI builds use the separate
+The release also includes checksums. Third-party source code is linked in the root README. These CI builds use the separate
 `com.htorrent.mobile.debug` application ID; they are not production-signed release builds.
 
 To build locally without the torrent engine (JDK 17, Android SDK, Gradle 8.11):
